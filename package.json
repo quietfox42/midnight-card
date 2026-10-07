@@ -1,8 +1,8 @@
 {
-  "name": "quietfox-mail",
+  "name": "midnight-card",
   "version": "1.0.0",
   "private": true,
-  "description": "Disposable inbox on the Cloudflare free plan: Email Routing catch-all → Worker → D1, React UI on Workers Static Assets.",
+  "description": "午夜黑卡：运行在 Cloudflare 免费套餐上的临时邮箱。Email Routing catch-all 收信，Worker + D1 存储，网页直接查看邮件。",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -47,8 +47,6 @@
     }
   },
   "dependencies": {
-    "@radix-ui/react-icons": "^1.3.2",
-    "@radix-ui/themes": "^3.3.0",
     "postal-mime": "^4.0.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

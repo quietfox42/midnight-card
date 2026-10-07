@@ -1,8 +1,8 @@
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/quietfox42/mail)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/quietfox42/midnight-card)
 
-# Quietfox Mail · 临时邮箱
+# 午夜黑卡 · 临时邮箱
 
-在 Cloudflare **免费套餐**上运行的公开临时收件箱。打开网页就得到一个 `xxxx@你的域名` 地址，无需注册，收到的邮件直接在网页上查看，24 小时后自动删除。
+午夜黑卡（midnight-card）是运行在 Cloudflare **免费套餐**上的公开临时邮箱。打开网页即得一个 `xxxx@你的域名` 临时地址，无需注册，收到的邮件直接在网页上查看，24 小时后自动删除。界面以手机为第一优先，地址以一张金属黑卡的形式呈现。
 
 ```
 发件人 ──SMTP──▶ Cloudflare Email Routing (catch-all)
@@ -20,7 +20,7 @@
 ```
 
 - **后端**：一个 Worker 同时处理 Email、API 和 Cron；`postal-mime` 解析；D1 存储（不用 KV）。
-- **前端**：Vite + React + TypeScript + Radix Themes，构建产物由 Workers Static Assets 托管；只有 `/api/*` 进 Worker。
+- **前端**：Vite + React + TypeScript，手写 CSS，不依赖 UI 组件库、外链字体或图片（gzip 后约 80KB）；构建产物由 Workers Static Assets 托管，只有 `/api/*` 进 Worker。手机单栏、宽屏双栏，只有深色主题。
 - **安全**：邮件 HTML 放在 `<iframe sandbox srcdoc>` 中渲染，禁止脚本，CSP 禁止加载任何外部资源（追踪像素、远程图片、字体都不会自动加载）。
 
 > ⚠️ **地址是公开的**：任何知道地址的人都能看到这个地址收到的邮件。不要用于重要账号。
@@ -67,8 +67,8 @@
 需要 Node.js 20+。
 
 ```bash
-git clone https://github.com/quietfox42/mail.git
-cd mail
+git clone https://github.com/quietfox42/midnight-card.git
+cd midnight-card
 npm install
 npm run setup -- --domain mail.example.org
 npm run deploy
@@ -77,7 +77,7 @@ npm run deploy
 **`npm run setup`**（幂等，重复执行不会报错或重复创建资源）：
 
 1. 检测 `wrangler` 登录状态，未登录则打开浏览器登录；
-2. 查找名为 `tempmail` 的 D1，不存在才创建；
+2. 查找名为 `midnight-card` 的 D1，不存在才创建；
 3. 把 `database_id` 写回 `wrangler.toml`（已存在且一致则不改动）；
 4. 若 `DOMAIN` 仍是占位符 `example.com`，使用 `--domain` 参数或交互询问并写入；
 5. 执行 `schema.sql`（全部是 `IF NOT EXISTS`）。
@@ -120,25 +120,25 @@ npm run deploy
 
 **③ 把 catch-all 指向 Worker**
 - **Email → Email Routing → Routing rules** → 页面底部 **Catch-all address** → **Edit**。
-- Action 选择 **Send to a Worker**，Destination 选择 **quietfox-mail**（或你部署时的 Worker 名）。
+- Action 选择 **Send to a Worker**，Destination 选择 **midnight-card**（或你部署时的 Worker 名）。
 - 保存并确认 Catch-all 状态为 **Active**（开关打开）。
 
 **④（可选）给网站绑定自定义域名**
-- **Workers & Pages → quietfox-mail → Settings → Domains & Routes → Add → Custom domain**，例如 `inbox.example.org`。
-- 不绑定也可以直接使用 `https://quietfox-mail.<你的子域>.workers.dev`。
+- **Workers & Pages → midnight-card → Settings → Domains & Routes → Add → Custom domain**，例如 `inbox.example.org`。
+- 不绑定也可以直接使用 `https://midnight-card.<你的子域>.workers.dev`。
 
 **⑤ 确认 `DOMAIN` 变量**
-- **Workers & Pages → quietfox-mail → Settings → Variables and Secrets**，`DOMAIN` 必须与收信域名一致（按钮部署时填过则无需改）。
+- **Workers & Pages → midnight-card → Settings → Variables and Secrets**，`DOMAIN` 必须与收信域名一致（按钮部署时填过则无需改）。
 - 注意：在面板修改变量后，下一次 `wrangler deploy` 会以 `wrangler.toml` 为准覆盖，长期修改请改 `wrangler.toml`。
 
 #### 检查清单
 
 - [ ] 域名在 Cloudflare 中状态为 Active
 - [ ] Email Routing 显示 *Enabled*，DNS 中有 `route1/2/3.mx.cloudflare.net` 的 MX 记录
-- [ ] Catch-all 规则 Action 为 *Send to a Worker → quietfox-mail*，且已启用
+- [ ] Catch-all 规则 Action 为 *Send to a Worker → midnight-card*，且已启用
 - [ ] 打开网站能看到地址，地址后缀是你的域名
 - [ ] 从任意邮箱给该地址发一封 “Your verification code is 123456” 的邮件，10 秒内出现在列表中并带有 `123456` 徽章
-- [ ] **Workers & Pages → quietfox-mail → Logs** 中没有报错
+- [ ] **Workers & Pages → midnight-card → Logs** 中没有报错
 - [ ] 发给 `admin@你的域名` 的邮件被拒收（保留前缀）
 
 ---
@@ -164,7 +164,7 @@ npm run deploy
 
 - **速率限制**：`[[ratelimits]]` 中 `limit = 60, period = 60`，即每个 IP 每分钟 60 次数据请求（正常轮询只用 6 次）。`namespace_id` 是自选整数，不是账号 ID。
 - **Cron**：`[triggers] crons = ["0 * * * *"]`。
-- **D1 名称**：`database_name = "tempmail"`。
+- **D1 名称**：`database_name = "midnight-card"`。
 
 ---
 
@@ -172,16 +172,16 @@ npm run deploy
 
 ### 1. 自定义前缀
 
-- 点击 **自定义**，输入前缀即可使用 `前缀@你的域名`。
+- 点击 **自定义**，在底部抽屉里输入前缀即可使用 `前缀@你的域名`。
 - 规则：`a-z 0-9 . _ -`，长度 3-32，点不能在首尾或连续出现。前端和 Worker 使用同一份校验代码 [src/shared/address.ts](src/shared/address.ts)。
 - 保留前缀（`admin`、`postmaster`、`abuse`、`support`、`security`、`noreply`、`webmaster` 等）不能使用，发往这些地址的邮件会被拒收（或转发到 `FORWARD_TO`）。
 - catch-all 模式下任何前缀都能直接收信，**不需要预先创建，也不写数据库**。
 
-### 2. 随机生成邮箱
+### 2. 随机生成地址
 
-- 点击 **换新地址**，前端用 `crypto.getRandomValues` 生成 8 位小写字母+数字前缀，不请求后端。
-- 当前地址保存在 `localStorage`，刷新页面保持不变。
-- 页面始终提示：地址公开，知道地址的人都能看到邮件，不要用于重要账号。
+- 点击 **换一个**，前端用 `crypto.getRandomValues` 生成 8 位小写字母+数字前缀，不请求后端。
+- 当前地址保存在 `localStorage` 的 `mc.address`，刷新页面保持不变。
+- 页面始终提示：这个地址是公开的，知道它的人都能看到邮件，请勿用于重要账号，以及邮件多久后删除（时长读取 `RETENTION_HOURS`）。
 
 ### 3. 验证码与链接自动提取
 
@@ -190,7 +190,7 @@ npm run deploy
 - 只扫描主题 + 正文前 **5KB**（纯 HTML 邮件先做廉价去标签，保留 `<a href>` 中的 URL）。
 - **验证码**：查找“验证码 / 校验码 / 动态码 / 一次性密码 / code / verification / OTP / passcode / PIN …”关键词，在其后 80 字符、其前 40 字符的窗口中找 4-8 位数字或字母数字（必须含数字），也支持 `123 456` 分组格式。纯数字优先、距离关键词越近越优先；排除年份、价格、颜色值、URL 里的数字。匹配不到留空。
 - **链接**：第一个包含 `verify` / `confirm` / `activate` 的 URL。前端显示 **打开链接** 按钮（新标签页，`rel="noopener noreferrer"`），**只展示，绝不自动访问**。
-- 列表中显示验证码徽章，点击即复制并提示“已复制”。
+- 列表中每封邮件的验证码以大号等宽字显示，点击即复制，提示“已复制”并轻微震动（支持 `navigator.vibrate` 的设备）。
 - 测试用例覆盖 Google（`G-123456`）、GitHub、微信、Microsoft、Apple、Discord、纯 HTML、营销邮件等：`npm test`。
 
 ---
