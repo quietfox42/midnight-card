@@ -1,49 +1,252 @@
-/* ---------- 地址操作条：手机竖屏固定在拇指区 ---------- */
+/* ---------- 地址操作条：拇指区悬浮胶囊 ---------- */
 
 .dock {
   position: fixed;
-  z-index: 20;
+  z-index: var(--z-dock);
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 24px calc(var(--gutter) + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(var(--gutter) + var(--safe-left));
-  background: linear-gradient(180deg, rgba(5, 7, 12, 0) 0%, rgba(5, 7, 12, 0.94) 42%, var(--bg) 100%);
+  padding: var(--s-6) calc(var(--dock-gap) + var(--safe-right)) calc(var(--dock-gap) + var(--safe-bottom))
+    calc(var(--dock-gap) + var(--safe-left));
+  /* 底部渐隐，让列表滚到胶囊后面时不显得生硬 */
+  background: linear-gradient(180deg, rgba(4, 5, 9, 0) 0%, rgba(4, 5, 9, 0.85) 55%, rgba(4, 5, 9, 0.96) 100%);
   pointer-events: none;
+  animation: dock-in 700ms var(--spring-soft) 380ms both;
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 40px, 0);
+  }
 }
 
 .dock-bar {
   max-width: 440px;
+  height: var(--dock-h);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1.35fr 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) 64px 64px;
+  gap: var(--s-1);
   padding: 6px;
   border: 1px solid var(--line-2);
-  border-radius: 18px;
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #161b26, #0b0e15);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, #181c26, #0b0d13);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 18px 40px -16px rgba(0, 0, 0, 0.9);
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    var(--shadow-float);
   pointer-events: auto;
 }
 
-.dock .btn {
-  min-height: 48px;
-  padding: 0 10px;
-  border-radius: 13px;
+/* ---------- 主按钮：复制 ---------- */
+
+.dock-copy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: 16px;
+  background: var(--silver-grad);
+  color: var(--ink);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  touch-action: manipulation;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 6px 18px -8px rgba(200, 210, 232, 0.45);
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
-.dock-copy .stack svg {
-  display: block;
+.dock-copy:active:not(:disabled) {
+  transform: scale(0.965);
 }
+
+.dock-copy:disabled {
+  opacity: 0.45;
+}
+
+.dock-copy-face {
+  gap: var(--s-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.dock-copy-face > * {
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dock-copy svg {
+  flex-shrink: 0;
+}
+
+/* 复制成功：按钮扫过一道光，内容换成“已复制” */
+.dock-copy-sheen {
+  position: absolute;
+  inset: 0 -60%;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.9) 50%, transparent 62%);
+  opacity: 0;
+  transform: translate3d(-60%, 0, 0);
+  pointer-events: none;
+}
+
+.dock-copy.is-done .dock-copy-sheen {
+  animation: dock-sheen 700ms var(--ease-out) both;
+}
+
+@keyframes dock-sheen {
+  20% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(60%, 0, 0);
+  }
+}
+
+.dock-done {
+  gap: 6px;
+}
+
+.dock-done svg {
+  animation: pop-in 420ms var(--spring-pop) both;
+}
+
+/* 迷你卡 + 地址 */
+.dock-mini {
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.mini-card {
+  position: relative;
+  flex-shrink: 0;
+  width: 30px;
+  height: 19px;
+  border-radius: 4px;
+  background: linear-gradient(150deg, #2a303c, #0b0e14 55%, #1a1e27);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.mini-chip {
+  position: absolute;
+  left: 4px;
+  top: 5px;
+  width: 7px;
+  height: 5px;
+  border-radius: 1.5px;
+  background: linear-gradient(135deg, var(--gold-hi), var(--gold-lo));
+}
+
+.mini-addr {
+  display: flex;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.mini-prefix {
+  flex-shrink: 0;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-domain {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.55;
+  font-weight: 500;
+}
+
+/* ---------- 次按钮：图标在上、字在下 ---------- */
+
+.dock-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  touch-action: manipulation;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) linear;
+}
+
+.dock-tool:active:not(:disabled) {
+  transform: scale(0.92);
+  background: var(--tint-2);
+}
+
+.dock-tool:hover:not(:disabled) {
+  background: var(--tint-1);
+}
+
+.dock-tool:disabled {
+  opacity: 0.4;
+}
+
+.dock-tool-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+
+/* ---------- 宽屏 / 矮屏横屏：回到卡片下方 ---------- */
 
 @media (max-height: 520px) and (orientation: landscape), (min-width: 900px) {
   .dock {
     position: static;
     padding: 0;
-    margin-top: 20px;
+    margin-top: var(--s-5);
     background: none;
+    animation: none;
+  }
+
+  .dock-bar {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock {
+    animation: fade-in 150ms linear both;
+  }
+
+  .dock-copy,
+  .dock-tool {
+    transition: none;
+  }
+
+  .dock-copy:active:not(:disabled),
+  .dock-tool:active:not(:disabled) {
+    transform: none;
+  }
+
+  .dock-copy.is-done .dock-copy-sheen,
+  .dock-done svg {
+    animation: none;
   }
 }

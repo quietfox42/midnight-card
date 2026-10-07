@@ -7,6 +7,7 @@ import { T } from '../lib/text';
 interface Props {
   mail: MailSummary;
   selected: boolean;
+  unread: boolean;
   copied: string | null;
   onCopy: (value: string, key: string) => void;
   onOpen: (id: number) => void;
@@ -18,13 +19,14 @@ export function monogram(sender: string): string {
   return (Array.from(name)[0] ?? '·').toUpperCase();
 }
 
-/** 收件箱里的一封邮件：一张深色“卡片纸条”，整条可点开详情，验证码和链接叠在上层。 */
-export function MailSlip({ mail: m, selected, copied, onCopy, onOpen }: Props) {
+/** 收件箱里的一封邮件：分组面板里的一行，整行可点开详情，验证码和链接叠在上层。 */
+export function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: Props) {
   return (
-    <li className={`slip${selected ? ' is-selected' : ''}`} data-slip={m.id}>
+    <li className={`slip${selected ? ' is-selected' : ''}${unread ? ' is-unread' : ''}`} data-slip={m.id}>
       <span className="slip-glow" aria-hidden="true" />
       <span className="slip-mono" aria-hidden="true">
         {monogram(m.sender)}
+        <span className="slip-dot" />
       </span>
       <div className="slip-main">
         <div className="slip-meta">
@@ -40,6 +42,7 @@ export function MailSlip({ mail: m, selected, copied, onCopy, onOpen }: Props) {
           aria-current={selected ? 'true' : undefined}
           onClick={() => onOpen(m.id)}
         >
+          {unread && <span className="visually-hidden">{T.unread} </span>}
           {m.subject || T.noSubject}
         </button>
         {(m.code || m.link) && (

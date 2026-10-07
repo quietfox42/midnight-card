@@ -2,22 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPrefix } from '../shared/address';
 import { ActionDock } from './components/ActionDock';
 import { MidnightCard, type CardFx } from './components/card/MidnightCard';
+import { ArrowUpIcon } from './components/Icons';
 import { Inbox } from './components/Inbox';
 import { MailDetail } from './components/MailDetail';
 import { PrefixSheet } from './components/PrefixSheet';
 import { Toast } from './components/Toast';
 import { fetchConfig, type AppConfig } from './lib/api';
+import { haptic, prefersReducedMotion } from './lib/motion';
 import { randomPrefix } from './lib/random';
 import { load, save } from './lib/storage';
-import { BRAND, T } from './lib/text';
-import { useCopy } from './lib/useCopy';
+import { T } from './lib/text';
+import { announce, useCopy } from './lib/useCopy';
 import { useInbox } from './lib/useInbox';
+import { usePullToRefresh } from './lib/usePullToRefresh';
 
 const ADDRESS_KEY = 'mc.address';
 const WIDE_QUERY = '(min-width: 900px)';
 const HISTORY_MARK = 'mc-mail';
+const PILL_MS = 6000;
 
-/** 宽屏双栏；窄屏时详情是滑入的全屏页 */
+/** 宽屏双栏；窄屏时详情是从底部升起的全高面板 */
 function useIsWide(): boolean {
   const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
   useEffect(() => {
@@ -36,10 +40,17 @@ export function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [cardVisible, setCardVisible] = useState(true);
+  const [pill, setPill] = useState(0); // 卡片不在屏幕上时到达的新邮件数
   const [copied, copy] = useCopy();
   const wide = useIsWide();
   const listScrollY = useRef(0);
   const cardRef = useRef<CardFx>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const pullRef = useRef<HTMLDivElement>(null);
+  const ptrRef = useRef<HTMLDivElement>(null);
+  const cardVisibleRef = useRef(true);
+  cardVisibleRef.current = cardVisible;
 
   useEffect(() => {
     fetchConfig()
@@ -62,12 +73,14 @@ export function App() {
   );
 
   // ---------- 列表 ↔ 详情 ----------
-  const overlay = detailOpen && !wide; // 窄屏全屏详情是否覆盖在列表之上
+  const overlay = detailOpen && !wide; // 窄屏全高详情是否覆盖在列表之上
 
   const openMail = (id: number) => {
     setSelectedId(id);
     if (wide) return;
     listScrollY.current = window.scrollY;
+    // 背后的页面以当前视口中心为原点后退
+    if (pageRef.current) pageRef.current.style.transformOrigin = `50% ${window.scrollY + window.innerHeight / 2}px`;
     setDetailOpen(true);
     // 记一条历史，让手机的系统返回手势回到列表而不是离开页面
     if (history.state?.[HISTORY_MARK] !== true) history.pushState({ [HISTORY_MARK]: true }, '');
@@ -84,7 +97,7 @@ export function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // 全屏详情打开时锁住背后的列表；关闭后恢复滚动位置，并把焦点还给刚才那封邮件
+  // 全高详情打开时锁住背后的列表；关闭后恢复滚动位置，并把焦点还给刚才那封邮件
   useEffect(() => {
     if (!overlay) return;
     const root = document.documentElement;
@@ -105,7 +118,11 @@ export function App() {
       setPrefix(p);
       setSelectedId(null);
       setDetailOpen(false);
+      setPill(0);
       save(ADDRESS_KEY, `${p}@${config.domain}`);
+      announce(T.newAddress(`${p}@${config.domain}`));
+      // 新地址要被看见：卡片不在屏幕上时先滚回去再翻面
+      if (!cardVisibleRef.current) window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     },
     [config],
   );
@@ -114,12 +131,39 @@ export function App() {
     if (address && (await copy(address, 'address'))) cardRef.current?.pulse();
   };
 
-  const onArrive = useCallback(() => cardRef.current?.deliver(), []);
+  // ---------- 新邮件 ----------
+  const onArrive = useCallback((count: number) => {
+    haptic([10, 50, 10]);
+    cardRef.current?.deliver();
+    if (!cardVisibleRef.current) setPill((n) => n + count);
+  }, []);
+
+  useEffect(() => {
+    if (cardVisible) setPill(0);
+  }, [cardVisible]);
+
+  useEffect(() => {
+    if (!pill) return;
+    const t = window.setTimeout(() => setPill(0), PILL_MS);
+    return () => window.clearTimeout(t);
+  }, [pill]);
+
+  const toTop = () => {
+    setPill(0);
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  // ---------- 下拉刷新 ----------
+  const refresh = inbox.refresh;
+  const onPullRefresh = useCallback(() => {
+    cardRef.current?.nod();
+    return refresh();
+  }, [refresh]);
+  usePullToRefresh({ target: pullRef, indicator: ptrRef, onRefresh: onPullRefresh, enabled: !!address && !overlay && !sheetOpen && !wide });
 
   if (configError) {
     return (
       <div className="shell">
-        <TopBar />
         <main className="fatal" role="alert">
           <h1 className="fatal-title">{T.serverErrorTitle}</h1>
           <p className="fatal-body">{T.serverErrorBody}</p>
@@ -136,38 +180,53 @@ export function App() {
 
   return (
     <div className="shell">
-      <div className="page" inert={overlay}>
-        <TopBar />
+      <div className={`page${overlay ? ' is-receded' : ''}`} ref={pageRef} inert={overlay}>
+        <h1 className="visually-hidden">午夜黑卡 · 临时邮箱</h1>
+        <div className="ptr" ref={ptrRef} aria-hidden="true">
+          <span className="ptr-ring" />
+          <span className="ptr-label">
+            <span className="ptr-pull">{T.pullHint}</span>
+            <span className="ptr-armed">{T.pullRelease}</span>
+            <span className="ptr-busy">{T.refreshing}</span>
+          </span>
+        </div>
         <main className="layout">
           <div className="column-main">
-            <section className="hero" aria-label={T.addressLabel}>
-              <MidnightCard
-                ref={cardRef}
-                prefix={prefix}
-                domain={config?.domain ?? null}
-                hours={hours}
-                onCopy={copyAddress}
-              />
-              <ActionDock
-                disabled={!address}
-                copied={copied === 'address'}
-                onCopy={copyAddress}
-                onRenew={() => changePrefix(randomPrefix())}
-                onCustomize={() => setSheetOpen(true)}
-              />
-            </section>
+            <div className="pull-target" ref={pullRef}>
+              <section className="hero" aria-label={T.addressLabel}>
+                <MidnightCard
+                  ref={cardRef}
+                  prefix={prefix}
+                  domain={config?.domain ?? null}
+                  hours={hours}
+                  onCopy={copyAddress}
+                  onVisible={setCardVisible}
+                />
+              </section>
 
-            <Inbox
-              ready={!!address}
-              messages={inbox.messages}
-              status={inbox.status}
-              checkedAt={inbox.checkedAt}
-              selectedId={wide ? selectedId : null}
-              copied={copied}
-              onCopy={copy}
-              onOpen={openMail}
-              onRefresh={inbox.refresh}
-              onArrive={onArrive}
+              <Inbox
+                ready={!!address}
+                messages={inbox.messages}
+                status={inbox.status}
+                checkedAt={inbox.checkedAt}
+                selectedId={wide ? selectedId : null}
+                copied={copied}
+                onCopy={copy}
+                onCopyAddress={copyAddress}
+                onOpen={openMail}
+                onRefresh={inbox.refresh}
+                onArrive={onArrive}
+              />
+            </div>
+
+            <ActionDock
+              disabled={!address}
+              copied={copied === 'address'}
+              compact={!cardVisible && !wide}
+              address={address}
+              onCopy={copyAddress}
+              onRenew={() => changePrefix(randomPrefix())}
+              onCustomize={() => setSheetOpen(true)}
             />
           </div>
 
@@ -184,6 +243,13 @@ export function App() {
           )}
         </main>
       </div>
+
+      {pill > 0 && !overlay && (
+        <button type="button" className="new-pill" onClick={toTop}>
+          <ArrowUpIcon />
+          {T.newMail(pill)}
+        </button>
+      )}
 
       {!wide && (
         <MailDetail
@@ -212,17 +278,5 @@ export function App() {
       )}
       <Toast />
     </div>
-  );
-}
-
-function TopBar() {
-  return (
-    <header className="topbar">
-      <span className="brand">
-        <img src="/favicon.svg" width="24" height="24" alt="" />
-        <span className="brand-name">{BRAND}</span>
-      </span>
-      <span className="brand-sub">临时邮箱</span>
-    </header>
   );
 }

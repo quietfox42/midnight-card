@@ -3,26 +3,27 @@
 .sheet {
   width: 100%;
   max-width: 520px;
-  max-height: calc(100dvh - var(--safe-top) - 24px);
-  margin: auto auto 0;
+  max-height: calc(100dvh - var(--safe-top) - var(--s-6) - var(--kb, 0px));
+  margin: auto auto var(--kb, 0px);
   padding: 0;
   border: 1px solid var(--line-2);
   border-bottom: 0;
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   background:
-    radial-gradient(120% 60% at 0% 0%, rgba(150, 166, 200, 0.1), transparent 60%),
-    linear-gradient(180deg, #121722, #0a0d14);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    radial-gradient(120% 50% at 0% 0%, rgba(150, 166, 200, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--surface-3), var(--surface-1));
+  box-shadow: var(--bevel);
   color: var(--text);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sheet[open] {
-  animation: sheet-up 440ms var(--ease-out) both;
+  animation: sheet-up var(--dur-sheet) var(--spring-soft) both;
 }
 
 .sheet::backdrop {
-  background: rgba(2, 3, 7, 0.72);
+  background: rgba(1, 2, 5, 0.66);
 }
 
 .sheet[open]::backdrop {
@@ -45,34 +46,120 @@
 .sheet-body {
   display: flex;
   flex-direction: column;
-  padding: 10px calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  padding: 0 calc(var(--s-5) + var(--safe-right)) calc(var(--s-5) + var(--safe-bottom)) calc(var(--s-5) + var(--safe-left));
 }
 
-.sheet-grabber {
-  align-self: center;
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line-3);
-  margin-bottom: 18px;
+.sheet-grab {
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 var(--s-4);
+  touch-action: none;
 }
 
 .sheet-title {
-  font-size: 21px;
-  font-weight: 300;
-  letter-spacing: 0.1em;
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .sheet-help {
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-2);
 }
 
+/* ---------- 实时预览：迷你黑卡 ---------- */
+
+.preview-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+  padding: var(--s-4) var(--s-4) var(--s-4);
+  border-radius: var(--r-md);
+  background:
+    var(--brushed) 0 0 / 100% 100%,
+    radial-gradient(120% 90% at 10% 0%, rgba(170, 186, 222, 0.14), transparent 55%),
+    linear-gradient(162deg, #1d222c 0%, #0e1118 50%, #141820 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 14px 30px -16px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.preview-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.preview-chip {
+  position: static;
+  width: 26px;
+  height: 19px;
+  border-radius: 4px;
+}
+
+.preview-tag {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--text-3);
+}
+
+.preview-ok {
+  margin-left: auto;
+  display: inline-flex;
+  color: #9fd8b4;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-slow) var(--spring-pop);
+}
+
+.preview-card.is-valid .preview-ok {
+  opacity: 1;
+  transform: none;
+}
+
+.preview-addr {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-family: var(--mono);
+}
+
+.preview-prefix {
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--silver-hi);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.preview-card:not(.is-valid) .preview-prefix {
+  color: var(--gold-hi);
+}
+
+.preview-domain {
+  font-size: var(--fs-sm);
+  color: var(--silver-lo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 输入框 ---------- */
+
 .field-label {
-  margin-top: 20px;
-  margin-bottom: 8px;
-  font-size: 13px;
+  margin-top: var(--s-5);
+  margin-bottom: var(--s-2);
+  font-size: var(--fs-sm);
   color: var(--text-2);
 }
 
@@ -81,10 +168,11 @@
   align-items: center;
   min-height: 52px;
   border: 1px solid var(--line-3);
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   background: rgba(0, 0, 0, 0.35);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  transition: border-color var(--dur) linear;
 }
 
 .field:focus-within {
@@ -115,7 +203,7 @@
   max-width: 55%;
   padding-right: 14px;
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -125,7 +213,7 @@
 .field-error {
   min-height: 1.6em;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--gold-hi);
 }
 
@@ -133,31 +221,39 @@
   display: grid;
   grid-template-columns: 1fr 1.6fr;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: var(--s-2);
 }
 
 .sheet-actions .btn {
-  min-height: 50px;
+  min-height: 52px;
+  border-radius: var(--r-md);
 }
 
 @media (min-width: 900px) {
   .sheet {
     margin: auto;
     border-bottom: 1px solid var(--line-2);
-    border-radius: 22px;
+    border-radius: var(--r-lg);
   }
 
   .sheet[open] {
     animation-name: sheet-pop;
+    animation-duration: var(--dur-slow);
   }
 
-  .sheet-grabber {
-    display: none;
+  .sheet-grab {
+    visibility: hidden;
+    padding-bottom: var(--s-2);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sheet[open] {
     animation: fade-in 150ms linear both;
+  }
+
+  .preview-ok {
+    transition: opacity 120ms linear;
+    transform: none;
   }
 }

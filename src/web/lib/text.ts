@@ -11,11 +11,15 @@ export const T = {
   renew: '换一个',
   customize: '自定义',
   copyAddress: '复制地址',
+  copiedValue: (value: string) => `已复制 ${value}`,
+  newAddress: (address: string) => `已换成新地址 ${address}`,
   copyFailed: '无法写入剪贴板。请长按文字手动复制。',
   addressPlaceholder: '正在生成地址',
 
   cardFoot: (hours: number) => `公开 · ${hours} 小时有效`,
   issuing: '正在签发新地址',
+  cardTag: 'TEMPORARY MAIL',
+  addressActions: '地址操作',
 
   inbox: '邮件',
   refresh: '立即刷新',
@@ -26,6 +30,11 @@ export const T = {
     rate_limited: '请求有点频繁，1 分钟后自动重试',
   },
   pollEvery: (seconds: number) => `每 ${seconds} 秒`,
+  pullHint: '下拉刷新',
+  pullRelease: '松手刷新',
+  refreshing: '正在刷新',
+  newMail: (n: number) => `${n} 封新邮件`,
+  unread: '未读',
 
   emptyTitle: '等待第一封邮件',
   emptyBody: '把地址填到注册页，邮件通常几秒内到达。',
@@ -41,6 +50,7 @@ export const T = {
   openLink: '打开链接',
 
   back: '返回',
+  closeHint: '下拉关闭',
   selectMail: '选择一封邮件查看内容。',
   bodyFormat: '正文格式',
   viewHtml: '网页',
@@ -53,6 +63,7 @@ export const T = {
   sheetHelp: '3–32 位，可用小写字母、数字、点、下划线、连字符。',
   sheetInputLabel: '地址前缀',
   sheetSubmit: '使用这个地址',
+  sheetPreview: '预览',
   cancel: '取消',
 } as const;
 

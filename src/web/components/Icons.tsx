@@ -78,3 +78,10 @@ export const NfcIcon = () => (
     <path d="M15 3.5a12 12 0 0 1 0 17" />
   </svg>
 );
+
+export const ArrowUpIcon = () => (
+  <svg {...base} width={16} height={16} strokeWidth={1.8}>
+    <path d="M12 19V5" />
+    <path d="m6 11 6-6 6 6" />
+  </svg>
+);

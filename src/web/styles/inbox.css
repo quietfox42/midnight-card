@@ -3,65 +3,56 @@
 .inbox {
   width: 100%; /* auto 外边距在网格里会让条目按内容收缩，长主题会撑出列宽 */
   max-width: 440px;
-  margin: 24px auto 0;
+  margin: var(--s-3) auto 0;
+  animation: rise-in 700ms var(--spring-soft) 260ms both;
 }
 
 .inbox-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 10px;
-}
-
-.inbox-title-row {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  min-width: 0;
-  flex-wrap: wrap;
+  gap: var(--s-3);
+  min-height: 40px;
+  padding: 0 var(--s-1) var(--s-2);
 }
 
 .section-title {
   display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 20px;
-  font-weight: 300;
-  letter-spacing: 0.12em;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  letter-spacing: 0.1em;
 }
 
 .count {
   display: inline-block;
   min-width: 22px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
+  background: var(--tint-2);
   border: 1px solid var(--line-2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
   line-height: 20px;
   text-align: center;
   letter-spacing: 0;
   color: var(--silver);
   font-variant-numeric: tabular-nums;
-  animation: count-pop 420ms var(--ease-spring) both;
-}
-
-@keyframes count-pop {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
-  }
 }
 
 .inbox-status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  margin-left: auto;
+  min-width: 0;
+  font-size: var(--fs-xs);
   color: var(--text-3);
+  text-align: right;
 }
 
 .live-dot {
+  flex-shrink: 0;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -69,8 +60,8 @@
 }
 
 .inbox-status.is-live .live-dot {
-  background: var(--silver);
-  box-shadow: 0 0 8px var(--glow);
+  background: #9fd8b4;
+  box-shadow: 0 0 8px rgba(159, 216, 180, 0.6);
   animation: breathe-dot 2.4s var(--ease-in-out) infinite;
 }
 
@@ -88,15 +79,42 @@
   background: var(--gold);
 }
 
-/* 卡槽：新邮件从这里滑出 */
-.slot {
+/* 刷新按钮只给有鼠标的设备；触屏用下拉刷新 */
+.inbox-refresh {
+  flex-shrink: 0;
+  margin: -4px -8px -4px 0;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .inbox-refresh {
+    display: none;
+  }
+}
+
+/* ---------- 分组面板 ---------- */
+
+.mail-panel {
   position: relative;
-  height: 4px;
-  border-radius: 2px;
-  background: #020305;
-  box-shadow:
-    inset 0 1px 1px rgba(0, 0, 0, 0.9),
-    0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+  box-shadow: var(--bevel);
+  /* 顶边以上裁掉：列表上移时，新邮件看起来是从槽里抽出来的 */
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* 卡槽：面板顶边上的一道暗缝，新邮件到达时亮起 */
+.slot {
+  position: absolute;
+  z-index: 2;
+  left: var(--s-5);
+  right: var(--s-5);
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
 
 .slot-glow {
@@ -104,71 +122,98 @@
   inset: 0;
   border-radius: inherit;
   background: linear-gradient(90deg, transparent, var(--gold-hi), var(--silver-hi), var(--gold-hi), transparent);
-  box-shadow: 0 0 16px 2px var(--glow-gold);
+  box-shadow: 0 0 16px 3px var(--glow-gold);
   opacity: 0;
-}
-
-/* 槽口以上裁掉：列表上移时，新邮件看起来是从槽里抽出来的 */
-.slip-well {
-  clip-path: inset(0 -24px -100vh -24px);
 }
 
 .slip-list {
   position: relative;
-  display: grid;
-  gap: 10px;
   margin: 0;
-  padding: 12px 0 0;
+  padding: 0;
   list-style: none;
 }
 
 .slip {
   position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--s-3);
+  padding: 14px var(--s-4);
+  transition: background-color var(--dur-fast) linear;
+}
+
+/* 行间细线：从文字处开始，不贯穿徽记 */
+.slip + .slip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(var(--s-4) + 40px + var(--s-3));
+  right: 0;
+  height: 1px;
+  background: var(--line-1);
 }
 
 .slip:has(.slip-open:hover) {
-  border-color: var(--line-2);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  background: var(--tint-1);
+}
+
+.slip:has(.slip-open:active) {
+  background: var(--tint-2);
 }
 
 .slip.is-selected {
-  border-color: var(--line-3);
-  box-shadow:
-    inset 2px 0 0 var(--silver),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--tint-2);
+  box-shadow: inset 2px 0 0 var(--silver);
 }
 
 .slip-glow {
   position: absolute;
-  inset: -1px;
-  border-radius: inherit;
+  inset: 0;
   box-shadow:
-    inset 0 0 0 1px rgba(230, 200, 130, 0.6),
-    0 0 26px -6px var(--glow-gold);
+    inset 0 0 0 1px rgba(230, 200, 130, 0.45),
+    inset 0 0 28px -6px var(--glow-gold);
+  background: linear-gradient(90deg, rgba(230, 200, 130, 0.08), transparent 70%);
   opacity: 0;
   pointer-events: none;
 }
 
 .slip-mono {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1px solid var(--line-2);
-  background: linear-gradient(145deg, #1e2431, #0d1118);
+  background: linear-gradient(145deg, #222835, #0d1118);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--silver);
+}
+
+/* 未读：徽记右上角一颗金点 */
+.slip-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-2);
+  background: var(--gold);
+  box-shadow: 0 0 8px var(--glow-gold);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-slow) var(--spring-pop);
+}
+
+.slip.is-unread .slip-dot {
+  opacity: 1;
+  transform: none;
 }
 
 .slip-main {
@@ -182,11 +227,12 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: var(--s-3);
 }
 
 .slip-sender {
-  font-size: 15px;
+  font-size: var(--fs-md);
+  font-weight: 500;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -195,9 +241,13 @@
 
 .slip-time {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
+}
+
+.slip.is-unread .slip-time {
+  color: var(--gold-hi);
 }
 
 .slip-open {
@@ -208,20 +258,30 @@
   border: 0;
   background: none;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 4px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* 让整张纸条都能点开详情 */
+/* 让整行都能点开详情 */
 .slip-open::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+}
+
+.slip-open:focus-visible {
+  outline: none;
+}
+
+.slip-open:focus-visible::after {
+  outline: 2px solid var(--silver-hi);
+  outline-offset: -3px;
+  border-radius: var(--r-md);
 }
 
 .slip-actions {
@@ -230,11 +290,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   margin-top: 10px;
 }
 
+/* 列表里验证码不需要“验证码”标签：金色大号数字本身就说明了；读屏仍有完整 aria-label */
+.slip-actions .code-label {
+  display: none;
+}
+
+.slip-actions .code-chip {
+  padding: 4px var(--s-4);
+}
+
 .slip.is-skeleton {
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
 }
 
@@ -244,13 +314,125 @@
 
 .slip.is-skeleton .slip-mono {
   border: 0;
-  height: 36px;
   border-radius: 50%;
 }
 
+.empty-copy {
+  min-height: var(--tap);
+}
+
+/* ---------- 新邮件药丸：用户已经往下滑时出现在顶部 ---------- */
+
+.new-pill {
+  position: fixed;
+  z-index: var(--z-pill);
+  top: calc(var(--safe-top) + var(--s-3));
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 var(--s-4) 0 var(--s-3);
+  border: 1px solid rgba(214, 180, 109, 0.5);
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, #221d14, #120f0a);
+  color: var(--gold-hi);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.04em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 190, 0.12),
+    0 10px 28px -10px rgba(0, 0, 0, 0.9),
+    0 0 24px -8px var(--glow-gold);
+  transform: translate3d(-50%, 0, 0);
+  animation: pill-in 520ms var(--spring-pop) both;
+  touch-action: manipulation;
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, -24px, 0) scale(0.9);
+  }
+}
+
+/* ---------- 下拉刷新指示器 ---------- */
+
+.ptr {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  top: calc(var(--safe-top) + 4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  --p: 0;
+}
+
+.ptr-ring {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+/* 一圈细银环，进度用旋转的半环表示（只动 transform） */
+.ptr-ring::before,
+.ptr-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.ptr-ring::before {
+  border: 2px solid var(--line-2);
+}
+
+.ptr-ring::after {
+  border: 2px solid transparent;
+  border-top-color: var(--silver-hi);
+  border-right-color: var(--silver);
+  transform: rotate(calc(var(--p) * 300deg));
+}
+
+.ptr[data-state='armed'] .ptr-ring::after {
+  border-top-color: var(--gold-hi);
+  border-right-color: var(--gold);
+}
+
+.ptr[data-state='refreshing'] .ptr-ring::after {
+  border-top-color: var(--gold-hi);
+  border-right-color: var(--gold);
+  animation: spin 700ms linear infinite;
+}
+
+.ptr-label {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+}
+
+.ptr-label > * {
+  display: none;
+}
+
+.ptr:not([data-state]) .ptr-pull,
+.ptr[data-state='pull'] .ptr-pull,
+.ptr[data-state='armed'] .ptr-armed,
+.ptr[data-state='refreshing'] .ptr-busy,
+.ptr[data-state='done'] .ptr-busy {
+  display: inline;
+}
+
+/* ---------- 宽屏 / 横屏 ---------- */
+
 @media (max-height: 520px) and (orientation: landscape) {
   .inbox {
-    margin-top: 8px;
+    margin-top: 0;
     max-width: none;
   }
 }
@@ -258,13 +440,23 @@
 @media (min-width: 900px) {
   .inbox {
     max-width: none;
-    margin-top: 32px;
+    margin-top: var(--s-8);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .count,
-  .inbox-status.is-live .live-dot {
+  .inbox,
+  .new-pill {
+    animation: fade-in 150ms linear both;
+  }
+
+  .inbox-status.is-live .live-dot,
+  .ptr[data-state='refreshing'] .ptr-ring::after {
     animation: none;
+  }
+
+  .slip-dot {
+    transition: opacity 120ms linear;
+    transform: none;
   }
 }

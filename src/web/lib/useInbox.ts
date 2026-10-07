@@ -23,7 +23,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
   const sinceRef = useRef(0);
   const lastNewRef = useRef(Date.now());
   const timerRef = useRef<number | undefined>(undefined);
-  const pollRef = useRef<() => void>(() => {});
+  const pollRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const baseInterval = Math.max(MIN_INTERVAL, pollSeconds * 1000);
 
@@ -76,7 +76,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
     pollRef.current = () => {
       lastNewRef.current = Date.now(); // 用户操作视为活跃，恢复正常频率
       window.clearTimeout(timerRef.current);
-      void poll();
+      return poll();
     };
 
     const onVisibility = () => {
@@ -93,6 +93,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
     };
   }, [address, baseInterval]);
 
+  /** 立即拉一次；返回的 Promise 在这次请求结束时完成（供下拉刷新收尾） */
   const refresh = useCallback(() => pollRef.current(), []);
 
   return { messages, status, checkedAt, refresh };

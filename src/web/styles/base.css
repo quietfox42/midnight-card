@@ -9,6 +9,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   background: var(--bg);
+  /* 关掉浏览器自带的下拉刷新与顶部回弹，由 usePullToRefresh 接管 */
+  overscroll-behavior-y: none;
 }
 
 html.is-locked {
@@ -18,30 +20,36 @@ html.is-locked {
 body {
   margin: 0;
   min-height: 100dvh;
-  background:
-    radial-gradient(90% 50% at 85% -10%, rgba(64, 80, 118, 0.34), transparent 62%),
-    radial-gradient(70% 40% at 0% 100%, rgba(150, 120, 60, 0.06), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
 }
 
-/* 全局细噪点，让大面积暗色不发“塑料” */
-body::before {
+/* 背景光晕与细噪点放在固定层上（不用 background-attachment: fixed，那会让手机每帧重绘） */
+body::before,
+body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  background:
+    radial-gradient(80% 42% at 80% -6%, rgba(70, 88, 130, 0.3), transparent 64%),
+    radial-gradient(60% 34% at 0% 28%, rgba(150, 122, 64, 0.06), transparent 70%);
+}
+
+body::after {
   background: var(--noise);
   background-size: 180px;
   opacity: 0.035;
-  pointer-events: none;
 }
 
 button,
@@ -84,9 +92,16 @@ p {
 .stack > * {
   grid-area: 1 / 1;
   display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-slow) var(--spring-soft);
 }
 .stack > .is-off {
-  visibility: hidden;
+  opacity: 0;
+  transform: translate3d(0, 6px, 0) scale(0.9);
+  pointer-events: none;
 }
 
 .icon-wrap {
@@ -100,48 +115,21 @@ p {
 }
 
 .page {
-  padding: 0 calc(var(--gutter) + var(--safe-right)) calc(var(--dock-h) + var(--safe-bottom) + 16px)
+  position: relative;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + var(--s-3)) calc(var(--gutter) + var(--safe-right)) calc(var(--dock-space) + var(--s-6))
     calc(var(--gutter) + var(--safe-left));
+  transform-origin: 50% 50vh;
+  transition:
+    transform var(--dur-sheet) var(--spring-soft),
+    border-radius var(--dur-sheet) var(--ease-out);
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: calc(56px + var(--safe-top));
-  padding-top: var(--safe-top);
-}
-
-.shell > .topbar {
-  padding-left: calc(var(--gutter) + var(--safe-left));
-  padding-right: calc(var(--gutter) + var(--safe-right));
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand img {
-  display: block;
-  border-radius: 6px;
-}
-
-.brand-name {
-  font-size: 15px;
-  font-weight: 300;
-  letter-spacing: 0.28em;
-  background: var(--silver-grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.brand-sub {
-  font-size: 11px;
-  color: var(--text-3);
-  letter-spacing: 0.24em;
+/* 手机详情打开时，背后的页面向后退一层 */
+html[data-perf='full'] .page.is-receded {
+  transform: scale(0.93);
+  border-radius: var(--r-xl);
+  overflow: hidden;
 }
 
 .layout {
@@ -155,8 +143,10 @@ p {
   min-width: 0;
 }
 
-.hero {
-  padding-top: 12px;
+/* 下拉刷新时卡片和列表一起跟手下移；盖住下方的刷新指示器 */
+.pull-target {
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------- 按钮 ---------- */
@@ -165,12 +155,12 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--s-2);
   min-height: var(--tap);
-  padding: 0 18px;
-  border-radius: 12px;
+  padding: 0 var(--s-5);
+  border-radius: var(--r-sm);
   border: 1px solid transparent;
-  font-size: 15px;
+  font-size: var(--fs-md);
   font-weight: 500;
   letter-spacing: 0.04em;
   text-decoration: none;
@@ -182,7 +172,7 @@ p {
 }
 
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .btn:disabled {
@@ -194,24 +184,25 @@ p {
   flex-shrink: 0;
 }
 
+/* 主按钮：抛光银 */
 .btn-primary {
   background: var(--silver-grad);
   color: var(--ink);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 8px 20px -10px rgba(200, 210, 230, 0.55);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 8px 22px -10px rgba(200, 210, 232, 0.5);
 }
 
 .btn-secondary {
-  background: transparent;
+  background: var(--tint-1);
   color: var(--text);
-  border-color: var(--line-3);
+  border-color: var(--line-2);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--silver-lo);
-  background: var(--panel);
+  border-color: var(--line-3);
+  background: var(--tint-2);
 }
 
 .btn-ghost {
@@ -220,14 +211,15 @@ p {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: var(--panel-hi);
+  background: var(--tint-2);
 }
 
 .btn-sm {
   min-height: 40px;
-  font-size: 13.5px;
-  padding: 0 14px;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-sm);
   font-weight: 400;
+  gap: 6px;
 }
 
 .icon-btn {
@@ -237,56 +229,61 @@ p {
   width: var(--tap);
   height: var(--tap);
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-2);
 }
 
 .icon-btn:hover:not(:disabled) {
   color: var(--text);
-  background: var(--panel-hi);
+  background: var(--tint-2);
 }
 
 .icon-btn:disabled {
   opacity: 0.4;
 }
 
-/* ---------- 验证码：金色凹印数字 ---------- */
+/* ---------- 验证码：金色凹印数字，一点就复制 ---------- */
 
 .code-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 6px 16px 6px 14px;
-  border: 1px solid rgba(211, 177, 107, 0.32);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(211, 177, 107, 0.08), rgba(211, 177, 107, 0.02));
-  box-shadow: inset 0 1px 0 rgba(242, 219, 165, 0.08);
+  gap: var(--s-3);
+  min-height: 48px;
+  padding: 4px var(--s-4) 4px var(--s-3);
+  border: 1px solid rgba(214, 180, 109, 0.3);
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, rgba(214, 180, 109, 0.1), rgba(214, 180, 109, 0.025));
+  box-shadow: inset 0 1px 0 rgba(245, 224, 173, 0.1);
+  overflow: hidden;
   touch-action: manipulation;
-  transition: transform var(--dur-fast) var(--ease-out);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
 }
 
 .code-chip:hover {
-  border-color: rgba(211, 177, 107, 0.55);
+  border-color: rgba(214, 180, 109, 0.55);
 }
 
 .code-chip:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .code-label {
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
   color: var(--text-3);
+  writing-mode: horizontal-tb;
 }
 
 .code-value {
   font-family: var(--mono);
-  font-size: 24px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  margin-right: -0.16em;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  margin-right: -0.14em;
   font-variant-numeric: tabular-nums;
   background: var(--gold-grad);
   -webkit-background-clip: text;
@@ -295,25 +292,30 @@ p {
 }
 
 .code-done {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   gap: 6px;
-  font-size: 15px;
+  font-size: var(--fs-md);
   color: var(--gold-hi);
-  animation: fade-in var(--dur) var(--ease-out);
 }
 
 .code-chip.is-copied {
   border-color: var(--gold);
 }
 
+/* 复制成功时扫过一道金光 */
+.code-sweep {
+  position: absolute;
+  inset: 0 -60%;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 236, 190, 0.35) 50%, transparent 65%);
+  opacity: 0;
+  pointer-events: none;
+}
+
 .code-lg {
-  min-height: 60px;
+  min-height: 56px;
 }
 
 .code-lg .code-value {
-  font-size: 30px;
+  font-size: var(--fs-2xl);
 }
 
 /* ---------- 骨架 / 空状态 / 错误 ---------- */
@@ -323,7 +325,7 @@ p {
   display: block;
   height: 12px;
   border-radius: 6px;
-  background: rgba(170, 179, 200, 0.09);
+  background: rgba(170, 179, 200, 0.08);
   overflow: hidden;
 }
 
@@ -347,8 +349,8 @@ p {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 8px;
-  padding: 36px 16px 28px;
+  gap: var(--s-2);
+  padding: var(--s-8) var(--s-4) var(--s-6);
   color: var(--text-3);
 }
 
@@ -358,7 +360,7 @@ p {
   place-items: center;
   width: 64px;
   height: 64px;
-  margin-bottom: 8px;
+  margin-bottom: var(--s-2);
   border-radius: 50%;
   border: 1px solid var(--line-2);
   color: var(--silver-lo);
@@ -374,96 +376,59 @@ p {
   animation: breathe 3.2s var(--ease-in-out) infinite;
 }
 
-@keyframes breathe {
-  50% {
-    opacity: 1;
-  }
-}
-
 .empty-title {
-  font-size: 17px;
-  font-weight: 300;
-  letter-spacing: 0.08em;
+  font-size: var(--fs-lg);
+  font-weight: 400;
+  letter-spacing: 0.06em;
   color: var(--text);
 }
 
 .empty-body {
-  max-width: 28em;
-  font-size: 14px;
+  max-width: 26em;
+  font-size: var(--fs-sm);
   color: var(--text-2);
 }
 
 .empty .btn {
-  margin-top: 12px;
+  margin-top: var(--s-3);
 }
 
 .fatal {
   max-width: 440px;
-  margin: 18vh auto 0;
-  padding: 0 calc(var(--gutter) + var(--safe-right)) 0 calc(var(--gutter) + var(--safe-left));
+  margin: 0 auto;
+  padding: calc(18vh + var(--safe-top)) calc(var(--gutter) + var(--safe-right)) 0 calc(var(--gutter) + var(--safe-left));
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--s-3);
   animation: rise-in 600ms var(--ease-out) both;
 }
 
 .fatal-title {
-  font-size: 26px;
+  font-size: var(--fs-2xl);
   font-weight: 300;
   letter-spacing: 0.06em;
 }
 
 .fatal-body {
   color: var(--text-2);
-  margin-bottom: 8px;
-}
-
-/* ---------- 提示 ---------- */
-
-.toast-region {
-  position: fixed;
-  z-index: 50;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--dock-h) + var(--safe-bottom) + 8px);
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.toast {
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: 1px solid var(--line-3);
-  background: linear-gradient(180deg, #171c27, #0d1018);
-  color: var(--silver-hi);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 12px 28px -10px rgba(0, 0, 0, 0.8);
-  animation: toast-in var(--dur-slow) var(--ease-spring) both;
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0) scale(0.96);
-  }
+  margin-bottom: var(--s-2);
 }
 
 /* ---------- 布局：矮屏横屏 ---------- */
 
+/* 宽屏与矮屏横屏没有下拉刷新：拆掉包裹层，让操作条排到卡片和列表之间 */
+@media (max-height: 520px) and (orientation: landscape), (min-width: 900px) {
+  .pull-target {
+    display: contents;
+  }
+
+  .ptr {
+    display: none;
+  }
+}
+
 @media (max-height: 520px) and (orientation: landscape) {
-  :root {
-    --dock-h: 0px;
-  }
-
-  .page {
-    padding-bottom: calc(24px + var(--safe-bottom));
-  }
-
   .layout {
     max-width: 880px;
   }
@@ -471,31 +436,32 @@ p {
   .column-main {
     display: grid;
     grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
-    gap: 24px;
+    column-gap: var(--s-6);
     align-items: start;
   }
 
-  .toast-region {
-    bottom: calc(16px + var(--safe-bottom));
+  .column-main .hero {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .column-main .dock {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .column-main .inbox {
+    grid-column: 2;
+    grid-row: 1 / span 3;
   }
 }
 
 /* ---------- 布局：宽屏左卡右信 ---------- */
 
 @media (min-width: 900px) {
-  :root {
-    --dock-h: 0px;
-    --gutter: 32px;
-  }
-
   .page {
-    padding-bottom: 32px;
-  }
-
-  .topbar {
-    max-width: 1200px;
-    margin: 0 auto;
-    min-height: 72px;
+    padding-top: var(--s-8);
+    padding-bottom: var(--s-8);
   }
 
   .layout {
@@ -505,12 +471,21 @@ p {
     align-items: start;
   }
 
-  .hero {
-    padding-top: 8px;
+  .column-main {
+    display: flex;
+    flex-direction: column;
   }
 
-  .toast-region {
-    bottom: 32px;
+  .column-main .hero {
+    order: 1;
+  }
+
+  .column-main .dock {
+    order: 2;
+  }
+
+  .column-main .inbox {
+    order: 3;
   }
 }
 
@@ -528,14 +503,28 @@ p {
     animation: none;
   }
 
-  .toast,
   .fatal {
     animation: fade-in 150ms linear both;
   }
 
   .btn,
-  .code-chip {
+  .code-chip,
+  .page {
     transition: none;
+  }
+
+  /* 背后页面不缩放，只靠遮罩压暗 */
+  html[data-perf='full'] .page.is-receded {
+    transform: none;
+    border-radius: 0;
+  }
+
+  .stack > * {
+    transition: opacity 120ms linear;
+  }
+
+  .stack > .is-off {
+    transform: none;
   }
 
   .btn:active:not(:disabled),

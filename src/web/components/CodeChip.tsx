@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { CheckIcon } from './Icons';
+import { EASE, play, useReducedMotion } from '../lib/motion';
 import { T } from '../lib/text';
 
 interface Props {
@@ -8,8 +10,24 @@ interface Props {
   size?: 'md' | 'lg';
 }
 
-/** 验证码：大号等宽字，一点就复制。两种状态叠放在同一格，切换时不改变尺寸。 */
+/** 验证码：金色大号等宽字，一点就复制。两种状态叠放在同一格，切换时不改变尺寸。 */
 export function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
+  const reduced = useReducedMotion();
+  const sweepRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!copied || reduced) return;
+    play(
+      sweepRef.current,
+      [
+        { opacity: 0, transform: 'translate3d(-50%,0,0)' },
+        { opacity: 1, offset: 0.3 },
+        { opacity: 0, transform: 'translate3d(50%,0,0)' },
+      ],
+      { duration: 700, easing: EASE.out },
+    );
+  }, [copied, reduced]);
+
   return (
     <button
       type="button"
@@ -20,6 +38,7 @@ export function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
         onCopy();
       }}
     >
+      <span className="code-sweep" ref={sweepRef} aria-hidden="true" />
       <span className="code-label" aria-hidden="true">
         {T.codeLabel}
       </span>

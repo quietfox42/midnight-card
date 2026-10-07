@@ -1,0 +1,76 @@
+/* ---------- 提示：从操作条上方浮出的金属药丸 ---------- */
+
+.toast-region {
+  position: fixed;
+  z-index: var(--z-toast);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dock-space) + var(--s-1));
+  display: flex;
+  justify-content: center;
+  padding: 0 calc(var(--gutter) + var(--safe-right)) 0 calc(var(--gutter) + var(--safe-left));
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  max-width: 100%;
+  padding: 10px var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-3);
+  background: linear-gradient(180deg, #1a1f2b, #0d1018);
+  color: var(--silver-hi);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.04em;
+  box-shadow: var(--bevel), var(--shadow-float);
+  animation: toast-in var(--dur-slow) var(--spring-pop) both;
+}
+
+.toast.is-warn {
+  border-color: rgba(214, 180, 109, 0.5);
+}
+
+.toast.is-warn::before {
+  content: '';
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.toast.is-leaving {
+  animation: toast-out var(--dur) var(--ease-in) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.92);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.96);
+  }
+}
+
+@media (min-width: 900px) {
+  .toast-region {
+    bottom: var(--s-8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: fade-in 150ms linear both;
+  }
+
+  .toast.is-leaving {
+    animation: fade-out 150ms linear both;
+  }
+}
