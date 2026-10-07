@@ -18,6 +18,7 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "midnight-card"
 database_id = "d404ba25-a357-412c-aa5e-9f93f2a34f66"
+migrations_dir = "migrations"  # 表结构变更；deploy 时自动 apply
 
 [vars]
 DOMAIN = "sqw.cc.cd"       # 收信域名（必须改成你的域名）

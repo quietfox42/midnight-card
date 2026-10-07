@@ -49,7 +49,7 @@
 |---|---|
 | ✅ 创建 D1 数据库 | ⬜ 把域名托管到 Cloudflare |
 | ✅ 绑定 D1、限流、Cron、静态资源 | ⬜ 开启 Email Routing |
-| ✅ 建表（schema.sql） | ⬜ 把 catch-all 规则指向本 Worker |
+| ✅ 建表（migrations/） | ⬜ 把 catch-all 规则指向本 Worker |
 | ✅ 构建前端并部署 Worker | ⬜ 把 `DOMAIN` 变量改成你的域名（按钮部署时可在页面上填） |
 
 ### 方式 A：一键部署按钮
@@ -58,7 +58,7 @@
 2. 部署页会把本仓库复制到你的 GitHub/GitLab 账号，并列出需要的资源：
    - **DB**：D1 数据库，自动创建（可改名）。
    - **DOMAIN** 等变量：把 `DOMAIN` 改成你的收信域名，其他保持默认即可。
-3. 确认构建设置：Build command 留空或 `npm run build`，**Deploy command 为 `npm run deploy`**（它会先执行 `schema.sql` 建表再部署）。
+3. 确认构建设置：Build command 留空或 `npm run build`，**Deploy command 为 `npm run deploy`**（它会先应用 `migrations/` 中的数据库迁移再部署）。
 4. 点击部署，等待完成。
 5. 继续完成下方的 [手动步骤](#手动步骤必须在-cloudflare-面板完成)。
 
@@ -80,9 +80,9 @@ npm run deploy
 2. 查找名为 `midnight-card` 的 D1，不存在才创建；
 3. 把 `database_id` 写回 `wrangler.toml`（已存在且一致则不改动）；
 4. 若 `DOMAIN` 仍是占位符 `example.com`，使用 `--domain` 参数或交互询问并写入；
-5. 执行 `schema.sql`（全部是 `IF NOT EXISTS`）。
+5. 应用 `migrations/` 中尚未执行的迁移（`wrangler d1 migrations apply`，已执行的会跳过）。
 
-**`npm run deploy`**：`vite build` → 执行 `schema.sql`（幂等，几乎不消耗额度）→ `wrangler deploy`。
+**`npm run deploy`**：`vite build` → `wrangler d1 migrations apply`（只执行新迁移，几乎不消耗额度）→ `wrangler deploy`。
 
 > 仓库中的 `database_id` 是全 0 占位符（一键部署要求配置里有默认 ID，部署时会替换）。命令行部署前必须先运行一次 `npm run setup` 写入真实 ID，否则 deploy 会因找不到数据库而失败。
 
@@ -262,7 +262,7 @@ Cloudflare 免费套餐（每天重置）：
 npm install
 npm test                                              # 正则与地址校验测试
 npm run build                                         # 构建前端到 dist/
-npx wrangler d1 execute DB --local --file=schema.sql  # 本地建表
+npm run db:migrate:local  # 本地建表 / 升级
 npx wrangler dev --var DOMAIN:test.dev                # http://localhost:8787
 ```
 
@@ -284,7 +284,7 @@ curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"
 
 ```
 wrangler.toml            Worker、D1、静态资源、限流、Cron、变量
-schema.sql               emails 表与索引
+migrations/              emails 表、索引与后续变更（wrangler d1 migrations）
 scripts/setup.mjs        幂等初始化脚本
 src/shared/address.ts    前后端共用的地址校验
 src/worker/index.ts      入口：fetch / email / scheduled

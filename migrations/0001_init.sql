@@ -1,5 +1,6 @@
--- 可重复执行（IF NOT EXISTS），setup / deploy 每次都会运行一遍。
+-- 初始表结构。用 IF NOT EXISTS，以便在迁移系统接管前就用 schema.sql 建过表的库上安全执行。
 CREATE TABLE IF NOT EXISTS emails (
+  -- AUTOINCREMENT 不能省：否则表被清空后 id 会从 1 重新开始，前端的 since 游标会漏掉新邮件
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   address     TEXT    NOT NULL,           -- 收件地址（小写）
   sender      TEXT    NOT NULL DEFAULT '',

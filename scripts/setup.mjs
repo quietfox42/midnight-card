@@ -4,7 +4,7 @@
 //   2. 创建 D1 数据库（同名已存在则跳过）
 //   3. 把 database_id 写回 wrangler.toml
 //   4. 若 DOMAIN 仍是占位符，询问或使用 --domain 参数写入
-//   5. 执行 schema.sql 建表（IF NOT EXISTS，可重复执行）
+//   5. 应用 migrations/ 下尚未执行的迁移（可重复执行）
 //
 // 用法：npm run setup [-- --domain example.com]
 
@@ -128,8 +128,8 @@ if (domain) {
 }
 
 // ---------- 5. 建表 ----------
-step(5, '执行 schema.sql（可重复执行）');
-wrangler(['d1', 'execute', 'DB', '--remote', '--file=schema.sql', '-y'], { capture: true });
+step(5, '应用数据库迁移（可重复执行）');
+wrangler(['d1', 'migrations', 'apply', 'DB', '--remote'], { capture: true });
 console.log('✔ 表和索引已就绪');
 
 console.log(`

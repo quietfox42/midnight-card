@@ -11,8 +11,9 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "setup": "node scripts/setup.mjs",
-    "db:init": "wrangler d1 execute DB --remote --file=schema.sql -y",
-    "deploy": "npm run build && npm run db:init && wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "deploy": "npm run build && npm run db:migrate && wrangler deploy",
     "cf-typegen": "wrangler types",
     "size": "node scripts/size.mjs"
   },
