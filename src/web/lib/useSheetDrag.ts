@@ -1,4 +1,5 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef } from 'preact/hooks';
+import type { RefObject } from 'preact';
 import { EASE, prefersReducedMotion } from './motion';
 
 const CLOSE_RATIO = 0.25; // 拉过面板高度的这个比例，或

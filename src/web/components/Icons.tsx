@@ -1,7 +1,7 @@
 // 内联图标：不引入图标库，不加载外部资源
-import type { SVGProps } from 'react';
+import type { SVGAttributes } from 'preact';
 
-const base: SVGProps<SVGSVGElement> = {
+const base: SVGAttributes<SVGSVGElement> = {
   width: 20,
   height: 20,
   viewBox: '0 0 24 24',
@@ -11,7 +11,7 @@ const base: SVGProps<SVGSVGElement> = {
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
   'aria-hidden': true,
-  focusable: false,
+  focusable: 'false',
 };
 
 export const CopyIcon = () => (

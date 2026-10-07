@@ -1,4 +1,5 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'preact/hooks';
+import type { CSSProperties, Ref } from 'preact';
 import { NfcIcon } from '../Icons';
 import { EASE, haptic, play, useReducedMotion } from '../../lib/motion';
 import { BRAND, T } from '../../lib/text';
@@ -93,7 +94,7 @@ export function MidnightCard({ prefix, domain, hours, onCopy, onVisible, ref }: 
   }, [prefix, reduced]);
 
   useImperativeHandle(
-    ref,
+    ref ?? null,
     () => ({
       pulse() {
         play(ringRef.current, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }], {
@@ -214,8 +215,8 @@ export function MidnightCard({ prefix, domain, hours, onCopy, onVisible, ref }: 
                     </button>
                   ) : (
                     <span className="card-address is-placeholder" aria-busy="true">
-                      <span className="skeleton-bar" style={{ width: '64%', height: 22 }} />
-                      <span className="skeleton-bar" style={{ width: '36%', marginTop: 10 }} />
+                      <span className="skeleton-bar" style={{ width: '64%', height: '22px' }} />
+                      <span className="skeleton-bar" style={{ width: '36%', marginTop: '10px' }} />
                       <span className="visually-hidden">{T.addressPlaceholder}</span>
                     </span>
                   )}

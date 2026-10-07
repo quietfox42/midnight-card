@@ -1,8 +1,8 @@
-import react from '@vitejs/plugin-react';
+import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [preact()],
   build: {
     outDir: 'dist',
     assetsDir: 'assets', // 文件名带 hash，public/_headers 为 /assets/* 设置一年 immutable 缓存

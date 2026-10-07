@@ -1,5 +1,5 @@
 // 动效约定：只动 transform / opacity；所有入口都先看 prefers-reduced-motion。
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'preact/hooks';
 
 const QUERY = '(prefers-reduced-motion: reduce)';
 

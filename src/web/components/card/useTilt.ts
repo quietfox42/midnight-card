@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
+import type { RefObject } from 'preact';
 import { load, save } from '../../lib/storage';
 
 const MAX_DEG = 10; // 最大倾斜角

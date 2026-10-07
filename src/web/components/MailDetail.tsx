@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { CodeChip } from './CodeChip';
 import { BackIcon, LinkIcon, MailIcon } from './Icons';
 import { monogram } from './MailSlip';

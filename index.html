@@ -13,6 +13,8 @@
     <meta name="apple-mobile-web-app-title" content="午夜黑卡" />
     <meta name="format-detection" content="telephone=no" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- 与 JS 并行拉取配置，省掉一轮 HTML → JS → config 的串行等待；须与 fetchConfig 的请求模式一致 -->
+    <link rel="preload" href="/api/config" as="fetch" crossorigin="anonymous" />
     <title>午夜黑卡 · 临时邮箱</title>
   </head>
   <body>

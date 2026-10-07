@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { ApiError, fetchMessages, type MailSummary } from './api';
 
 const MIN_INTERVAL = 10_000;

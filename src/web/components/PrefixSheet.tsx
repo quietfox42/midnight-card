@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { TargetedSubmitEvent } from 'preact';
 import { checkPrefix, PREFIX_MAX } from '../../shared/address';
 import { CheckIcon } from './Icons';
 import { EASE, finished, play, prefersReducedMotion } from '../lib/motion';
@@ -113,7 +114,7 @@ export function PrefixSheet({ open, domain, current, reserved, onClose, onSubmit
     );
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = (e: TargetedSubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const v = value.trim().toLowerCase();
     const err = validate(v);
@@ -184,12 +185,12 @@ export function PrefixSheet({ open, domain, current, reserved, onClose, onSubmit
             autoComplete="off"
             autoCapitalize="none"
             autoCorrect="off"
-            spellCheck={false}
+            spellcheck={false}
             enterKeyHint="done"
             aria-invalid={!!error}
             aria-errormessage={error ? 'prefix-error' : undefined}
-            onChange={(e) => {
-              setValue(e.target.value);
+            onInput={(e) => {
+              setValue(e.currentTarget.value);
               if (error) setError(null);
             }}
             onBlur={() => value.trim() && setError(validate(value.trim().toLowerCase()))}

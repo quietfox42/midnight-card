@@ -1,5 +1,4 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { render } from 'preact';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/card.css';
@@ -13,8 +12,4 @@ import { perfTier } from './lib/motion';
 
 perfTier(); // 先写好 <html data-perf>，首帧 CSS 就能按档位降级
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+render(<App />, document.getElementById('root')!);

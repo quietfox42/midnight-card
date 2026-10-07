@@ -1,4 +1,5 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef } from 'preact/hooks';
+import type { RefObject } from 'preact';
 import { EASE, haptic, prefersReducedMotion } from './motion';
 
 const THRESHOLD = 64; // 拉过这个距离（阻尼后，手指约移动 140px）松手就刷新

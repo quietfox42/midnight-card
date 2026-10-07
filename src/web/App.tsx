@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { checkPrefix } from '../shared/address';
 import { ActionDock } from './components/ActionDock';
 import { MidnightCard, type CardFx } from './components/card/MidnightCard';
 import { ArrowUpIcon } from './components/Icons';
 import { Inbox } from './components/Inbox';
-import { MailDetail } from './components/MailDetail';
-import { PrefixSheet } from './components/PrefixSheet';
 import { Toast } from './components/Toast';
 import { fetchConfig, type AppConfig } from './lib/api';
+import { lazy, whenIdle } from './lib/lazy';
 import { haptic, prefersReducedMotion } from './lib/motion';
 import { randomPrefix } from './lib/random';
 import { load, save } from './lib/storage';
@@ -15,6 +14,10 @@ import { T } from './lib/text';
 import { announce, useCopy } from './lib/useCopy';
 import { useInbox } from './lib/useInbox';
 import { usePullToRefresh } from './lib/usePullToRefresh';
+
+// 详情和自定义抽屉不在首屏：首屏渲染后空闲时预取，打开时已就绪
+const MailDetail = lazy(() => import('./components/MailDetail').then((m) => m.MailDetail));
+const PrefixSheet = lazy(() => import('./components/PrefixSheet').then((m) => m.PrefixSheet));
 
 const ADDRESS_KEY = 'mc.address';
 const WIDE_QUERY = '(min-width: 900px)';
@@ -61,6 +64,10 @@ export function App() {
         const p = savedPrefix && checkPrefix(savedPrefix, c.reserved) === null ? savedPrefix : randomPrefix();
         setPrefix(p);
         save(ADDRESS_KEY, `${p}@${c.domain}`);
+        whenIdle(() => {
+          void MailDetail.preload().catch(() => {});
+          void PrefixSheet.preload().catch(() => {});
+        });
       })
       .catch(() => setConfigError(true));
   }, []);
@@ -164,13 +171,13 @@ export function App() {
   if (configError) {
     return (
       <div className="shell">
-        <main className="fatal" role="alert">
+        <div className="fatal" role="alert">
           <h1 className="fatal-title">{T.serverErrorTitle}</h1>
           <p className="fatal-body">{T.serverErrorBody}</p>
           <button type="button" className="btn btn-primary" onClick={() => location.reload()}>
             {T.reload}
           </button>
-        </main>
+        </div>
         <Toast />
       </div>
     );

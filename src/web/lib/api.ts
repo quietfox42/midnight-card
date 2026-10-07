@@ -28,7 +28,8 @@ export class ApiError extends Error {
 
 async function get<T>(path: string): Promise<T> {
   // 超时后按失败处理，避免一个卡住的请求让轮询永远停在“进行中”
-  const res = await fetch(path, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
+  // 不加自定义请求头：config 请求要和 index.html 里的 <link rel=preload> 完全一致才能复用
+  const res = await fetch(path, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new ApiError(res.status);
   return res.json() as Promise<T>;
 }

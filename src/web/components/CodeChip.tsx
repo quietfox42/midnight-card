@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'preact/hooks';
 import { CheckIcon } from './Icons';
 import { EASE, play, useReducedMotion } from '../lib/motion';
 import { T } from '../lib/text';

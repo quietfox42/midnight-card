@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { MailSlip } from './MailSlip';
 import { CopyIcon, MailIcon, RefreshIcon } from './Icons';
 import type { MailSummary } from '../lib/api';

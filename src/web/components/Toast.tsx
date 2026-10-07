@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { ANNOUNCE_EVENT, TOAST_EVENT, type ToastDetail } from '../lib/useCopy';
 
 const SHOW_MS = 2200;
