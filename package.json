@@ -12,20 +12,10 @@
     "test": "vitest run",
     "setup": "node scripts/setup.mjs",
     "db:init": "wrangler d1 execute DB --remote --file=schema.sql -y",
-    "deploy": "npm run build && wrangler deploy && npm run db:init",
+    "deploy": "npm run build && npm run db:init && wrangler deploy",
     "cf-typegen": "wrangler types"
   },
   "cloudflare": {
-    "label": "Quietfox Temp Mail",
-    "products": [
-      "Workers",
-      "D1",
-      "Email Routing"
-    ],
-    "categories": [
-      "email",
-      "storage"
-    ],
     "bindings": {
       "DB": {
         "description": "D1 数据库，存放收到的邮件（保留 RETENTION_HOURS 小时后由 Cron 清理）。部署时自动创建。"

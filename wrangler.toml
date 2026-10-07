@@ -1,6 +1,6 @@
 # Quietfox Temp Mail — 所有可调参数都在本文件，无需改代码。
-# 不要在此填写账号 ID；database_id 由 `npm run setup` 写入，
-# 或留空交给一键部署 / `wrangler deploy` 自动创建 D1。
+# 不要在此填写账号 ID。database_id 是占位符：一键部署会自动创建 D1 并替换它，
+# 命令行部署时由 `npm run setup` 创建/查找 D1 并写入真实 ID。
 name = "quietfox-mail"
 main = "src/worker/index.ts"
 compatibility_date = "2026-10-01"
@@ -17,6 +17,7 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "tempmail"
+database_id = "00000000-0000-0000-0000-000000000000"
 
 [vars]
 DOMAIN = "example.com"       # 收信域名（必须改成你的域名）

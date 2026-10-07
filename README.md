@@ -58,7 +58,7 @@
 2. 部署页会把本仓库复制到你的 GitHub/GitLab 账号，并列出需要的资源：
    - **DB**：D1 数据库，自动创建（可改名）。
    - **DOMAIN** 等变量：把 `DOMAIN` 改成你的收信域名，其他保持默认即可。
-3. 确认构建设置：Build command 留空或 `npm run build`，**Deploy command 为 `npm run deploy`**（它会在部署后执行 `schema.sql` 建表）。
+3. 确认构建设置：Build command 留空或 `npm run build`，**Deploy command 为 `npm run deploy`**（它会先执行 `schema.sql` 建表再部署）。
 4. 点击部署，等待完成。
 5. 继续完成下方的 [手动步骤](#手动步骤必须在-cloudflare-面板完成)。
 
@@ -82,7 +82,9 @@ npm run deploy
 4. 若 `DOMAIN` 仍是占位符 `example.com`，使用 `--domain` 参数或交互询问并写入；
 5. 执行 `schema.sql`（全部是 `IF NOT EXISTS`）。
 
-**`npm run deploy`**：`vite build` → `wrangler deploy` → 再执行一次 `schema.sql`（幂等，几乎不消耗额度）。
+**`npm run deploy`**：`vite build` → 执行 `schema.sql`（幂等，几乎不消耗额度）→ `wrangler deploy`。
+
+> 仓库中的 `database_id` 是全 0 占位符（一键部署要求配置里有默认 ID，部署时会替换）。命令行部署前必须先运行一次 `npm run setup` 写入真实 ID，否则 deploy 会因找不到数据库而失败。
 
 > `database_id` 不是机密，建议把 setup 修改后的 `wrangler.toml` 提交到你自己的仓库，这样 CI 部署也能找到同一个数据库。
 
