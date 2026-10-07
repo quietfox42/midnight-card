@@ -1,0 +1,76 @@
+{
+  "name": "quietfox-mail",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Disposable inbox on the Cloudflare free plan: Email Routing catch-all → Worker → D1, React UI on Workers Static Assets.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "setup": "node scripts/setup.mjs",
+    "db:init": "wrangler d1 execute DB --remote --file=schema.sql -y",
+    "deploy": "npm run build && wrangler deploy && npm run db:init",
+    "cf-typegen": "wrangler types"
+  },
+  "cloudflare": {
+    "label": "Quietfox Temp Mail",
+    "products": [
+      "Workers",
+      "D1",
+      "Email Routing"
+    ],
+    "categories": [
+      "email",
+      "storage"
+    ],
+    "bindings": {
+      "DB": {
+        "description": "D1 数据库，存放收到的邮件（保留 RETENTION_HOURS 小时后由 Cron 清理）。部署时自动创建。"
+      },
+      "DOMAIN": {
+        "description": "收信域名，例如 example.com。该域名需托管在 Cloudflare 并启用 Email Routing。"
+      },
+      "RETENTION_HOURS": {
+        "description": "邮件保留小时数，默认 24。"
+      },
+      "MAX_RAW_BYTES": {
+        "description": "原始邮件大小上限（字节），超过直接拒收，默认 1048576（1MB）。"
+      },
+      "MAX_BODY_BYTES": {
+        "description": "存储的正文（text+html）上限（字节），超出截断，默认 204800（200KB）。"
+      },
+      "POLL_SECONDS": {
+        "description": "前端轮询间隔秒数，最小 10。"
+      },
+      "BLOCKED_SENDERS": {
+        "description": "拒收的发件人或域名，逗号分隔，例如 spam@bad.com,bad.org。"
+      },
+      "EXTRA_RESERVED": {
+        "description": "额外的保留前缀，逗号分隔。"
+      },
+      "FORWARD_TO": {
+        "description": "可选：发往保留前缀（postmaster、abuse 等）的邮件转发到此已验证邮箱；留空则拒收。"
+      }
+    }
+  },
+  "dependencies": {
+    "@radix-ui/react-icons": "^1.3.2",
+    "@radix-ui/themes": "^3.3.0",
+    "postal-mime": "^4.0.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261007.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.2.0",
+    "wrangler": "^4.147.0"
+  }
+}

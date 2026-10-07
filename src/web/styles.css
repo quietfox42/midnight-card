@@ -1,0 +1,282 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-background, #fff);
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #111113;
+  }
+}
+
+.radix-themes {
+  min-height: 100%;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px 16px;
+  box-sizing: border-box;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.addressbar {
+  flex-shrink: 0;
+  padding: 16px;
+  border: 1px solid var(--gray-a5);
+  border-radius: var(--radius-4);
+  background: var(--color-panel-solid);
+  margin-bottom: 16px;
+}
+
+.address {
+  all: unset;
+  cursor: pointer;
+  font-family: var(--code-font-family);
+  font-size: var(--font-size-5);
+  line-height: var(--line-height-5);
+  font-weight: 500;
+  color: var(--gray-12);
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-2);
+  padding: 0 4px;
+  margin-left: -4px;
+}
+
+.address:hover {
+  background: var(--gray-a3);
+}
+
+.address:focus-visible,
+.mail-item:focus-visible,
+.code-badge:focus-visible {
+  outline: 2px solid var(--focus-8);
+  outline-offset: 2px;
+}
+
+.notice {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* 双栏：左列表、右详情 */
+.panes {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  min-height: 420px;
+  border: 1px solid var(--gray-a5);
+  border-radius: var(--radius-4);
+  background: var(--color-panel-solid);
+  overflow: hidden;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pane-list {
+  border-right: 1px solid var(--gray-a5);
+}
+
+.pane-header {
+  height: 44px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--gray-a5);
+  flex-shrink: 0;
+}
+
+.mail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.mail-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-a3);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mail-item:hover {
+  background: var(--gray-a2);
+}
+
+.mail-item.is-selected {
+  background: var(--accent-a3);
+}
+
+.code-badge {
+  all: unset;
+  cursor: pointer;
+  border-radius: var(--radius-2);
+}
+
+.mono {
+  font-family: var(--code-font-family);
+  letter-spacing: 0.04em;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.empty {
+  flex: 1;
+  padding: 32px 24px;
+  color: var(--gray-11);
+  min-height: 0;
+}
+
+.mail-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.mail-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-a5);
+  flex-shrink: 0;
+}
+
+.subject {
+  overflow-wrap: anywhere;
+}
+
+.back-btn {
+  display: none !important;
+}
+
+.mode-switch {
+  margin-left: auto;
+}
+
+.mail-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.mail-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff; /* 邮件 HTML 都是按浅色背景设计的 */
+}
+
+.mail-text {
+  margin: 0;
+  padding: 16px 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--default-font-family);
+  font-size: var(--font-size-2);
+  line-height: var(--line-height-2);
+  color: var(--gray-12);
+}
+
+/* 移动端：单栏，列表与详情切换 */
+@media (max-width: 767px) {
+  /* 单栏时让整页自然滚动，避免详情区被顶部挤到 0 高度 */
+  .app {
+    padding: 0;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .panes {
+    flex: 1 0 auto;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .mail-list,
+  .mail-body {
+    overflow: visible;
+  }
+
+  .mail-frame {
+    flex: none;
+    height: 75dvh;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .addressbar {
+    margin: 0 16px 12px;
+    padding: 12px;
+  }
+
+  .hide-sm {
+    display: none;
+  }
+
+  .panes {
+    grid-template-columns: 1fr;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .pane-list {
+    border-right: 0;
+  }
+
+  .panes:not(.has-selection) .pane-detail,
+  .panes.has-selection .pane-list {
+    display: none;
+  }
+
+  .back-btn {
+    display: inline-flex !important;
+    margin: 0 0 12px -4px !important;
+  }
+
+  .mail-head {
+    padding: 12px 16px;
+  }
+
+  .mode-switch {
+    margin-left: 0;
+  }
+}

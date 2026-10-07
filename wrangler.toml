@@ -1,0 +1,46 @@
+# Quietfox Temp Mail — 所有可调参数都在本文件，无需改代码。
+# 不要在此填写账号 ID；database_id 由 `npm run setup` 写入，
+# 或留空交给一键部署 / `wrangler deploy` 自动创建 D1。
+name = "quietfox-mail"
+main = "src/worker/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# 前端静态资源：直接由 CDN 返回，不经过 Worker，不计入请求数。
+# 只有 /api/* 会进入 Worker。
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tempmail"
+
+[vars]
+DOMAIN = "example.com"       # 收信域名（必须改成你的域名）
+RETENTION_HOURS = "24"       # 邮件保留小时数
+MAX_RAW_BYTES = "1048576"    # 原始邮件超过此大小直接拒收（1MB）
+MAX_BODY_BYTES = "204800"    # 存储的正文上限，超出截断（200KB）
+POLL_SECONDS = "10"          # 前端轮询间隔（秒，最小 10）
+BLOCKED_SENDERS = ""         # 拒收发件人/域名，逗号分隔
+EXTRA_RESERVED = ""          # 额外保留前缀，逗号分隔
+FORWARD_TO = ""              # 可选：保留前缀邮件转发到此已验证地址，留空则拒收
+
+# API 速率限制：每个 IP 每 60 秒最多 60 次（轮询 10s 一次只用 6 次）。
+# namespace_id 是你自己挑的整数，不是账号 ID。
+[[ratelimits]]
+name = "API_LIMITER"
+namespace_id = "4201"
+simple = { limit = 60, period = 60 }
+
+# 每小时清理一次过期邮件（单条 DELETE）。
+[triggers]
+crons = ["0 * * * *"]
+
+[observability]
+enabled = true
+
+# 可选：给网站绑定自定义域名（需在 Cloudflare 托管该域名）
+# routes = [{ pattern = "mail.example.com", custom_domain = true }]
