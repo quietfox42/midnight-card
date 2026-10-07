@@ -1,102 +1,131 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { ApiError, fetchMessages, type MailSummary } from './api';
+import { nextDelay, POLL, type Outcome } from './pollPolicy';
 import { createStore, type Store } from './store';
 
-const MIN_INTERVAL = 10_000;
-const IDLE_INTERVAL = 30_000;
-const IDLE_AFTER = 5 * 60_000;
-const RATE_LIMIT_WAIT = 60_000;
 const MAX_KEPT = 100;
 
 export type InboxStatus = 'loading' | 'ok' | 'error' | 'rate_limited';
 
 /**
- * 轮询收件箱：
- * - 间隔不低于 10 秒；5 分钟没有新邮件后放慢到 30 秒，有新邮件或手动刷新时恢复
- * - 页面不可见时完全暂停，重新可见时立刻拉一次
- * - 用 since（最大 id）增量拉取，通常返回 0 行
+ * 轮询收件箱（节奏见 pollPolicy.ts）：
+ * - 正常 ≥10 秒一次；5 分钟没有新邮件放慢到 30 秒；失败时指数退避到最长 2 分钟；被限流按 Retry-After。
+ * - 页面不可见时完全暂停；重新可见时若距上次轮询超过 5 秒立刻拉一次，否则按原节奏。
+ * - 浏览器报告离线时暂停，`online` 时立刻拉一次。
+ * - 增量拉取（since = 已知最大 id）；服务端返回 more 时同一次轮询里立即续拉，突发大量邮件也不漏。
+ * - 切换地址或卸载时中止进行中的请求；请求进行中调用 refresh() 会复用它。
  */
 export function useInbox(address: string | null, pollSeconds: number) {
   const [messages, setMessages] = useState<MailSummary[]>([]);
   const [status, setStatus] = useState<InboxStatus>('loading');
   // 每次轮询都会变：放在独立 store 里，只有状态行订阅，空轮询不会让 App 重渲染
   const [checkedAt] = useState<Store<number | null>>(() => createStore<number | null>(null));
+  const refreshRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  const sinceRef = useRef(0);
-  const lastNewRef = useRef(Date.now());
-  const timerRef = useRef<number | undefined>(undefined);
-  const pollRef = useRef<() => Promise<void>>(() => Promise.resolve());
-
-  const baseInterval = Math.max(MIN_INTERVAL, pollSeconds * 1000);
+  const base = Math.max(POLL.min, pollSeconds * 1000);
 
   useEffect(() => {
     if (!address) return;
-    let cancelled = false;
-    let inFlight = false; // 每个地址独立，切换地址不会被旧请求挡住
-    sinceRef.current = 0;
-    lastNewRef.current = Date.now();
+    const ctrl = new AbortController();
+    let timer: number | undefined;
+    let inFlight: Promise<void> | null = null;
+    let since = 0;
+    let failures = 0;
+    let lastNew = Date.now();
+    let lastPoll = 0;
+
     setMessages([]);
     setStatus('loading');
     checkedAt.set(null);
 
+    const stopped = () => ctrl.signal.aborted;
+    const paused = () => document.hidden || navigator.onLine === false;
+
     const schedule = (delay: number) => {
-      window.clearTimeout(timerRef.current);
-      if (cancelled || document.hidden) return;
-      timerRef.current = window.setTimeout(poll, delay);
+      window.clearTimeout(timer);
+      if (!stopped() && !paused()) timer = window.setTimeout(poll, delay);
     };
 
-    async function poll() {
-      if (cancelled || document.hidden || inFlight) return;
-      inFlight = true;
-      let next = baseInterval;
+    async function run(): Promise<void> {
+      lastPoll = Date.now();
+      let outcome: Outcome = 'ok';
+      let retryAfterMs: number | undefined;
       try {
-        const fresh = await fetchMessages(address!, sinceRef.current);
-        if (cancelled) return;
+        const fresh: MailSummary[] = [];
+        for (let page = 0; page < POLL.maxPages; page++) {
+          const r = await fetchMessages(address!, since, ctrl.signal);
+          if (r.messages.length) {
+            since = Math.max(since, ...r.messages.map((m) => m.id));
+            fresh.unshift(...r.messages); // 每页内部是倒序；后一页更新，放到前面
+          }
+          if (!r.more) break;
+        }
+        if (stopped()) return;
         if (fresh.length) {
-          sinceRef.current = Math.max(sinceRef.current, ...fresh.map((m) => m.id));
-          lastNewRef.current = Date.now();
+          lastNew = Date.now();
           setMessages((prev) => [...fresh, ...prev].slice(0, MAX_KEPT));
         }
+        failures = 0;
         setStatus('ok');
         checkedAt.set(Date.now());
-        if (Date.now() - lastNewRef.current > IDLE_AFTER) next = Math.max(baseInterval, IDLE_INTERVAL);
       } catch (err) {
-        if (cancelled) return;
+        if (stopped()) return;
         if (err instanceof ApiError && err.status === 429) {
+          outcome = 'rate_limited';
+          retryAfterMs = err.retryAfterMs;
           setStatus('rate_limited');
-          next = RATE_LIMIT_WAIT;
         } else {
+          outcome = 'error';
+          failures++;
           setStatus('error');
-          next = Math.max(baseInterval, IDLE_INTERVAL);
         }
-      } finally {
-        inFlight = false;
       }
-      schedule(next);
+      schedule(nextDelay({ outcome, base, failures, sinceNew: Date.now() - lastNew, retryAfterMs }));
     }
 
-    pollRef.current = () => {
-      lastNewRef.current = Date.now(); // 用户操作视为活跃，恢复正常频率
-      window.clearTimeout(timerRef.current);
+    /** 同一时间只有一个请求；正在进行时返回它 */
+    function poll(): Promise<void> {
+      if (stopped()) return Promise.resolve();
+      window.clearTimeout(timer);
+      inFlight ??= run().finally(() => {
+        inFlight = null;
+      });
+      return inFlight;
+    }
+
+    refreshRef.current = () => {
+      lastNew = Date.now(); // 用户操作视为活跃，恢复正常频率
       return poll();
     };
 
     const onVisibility = () => {
-      if (document.hidden) window.clearTimeout(timerRef.current);
-      else void poll();
+      if (document.hidden) {
+        window.clearTimeout(timer);
+        return;
+      }
+      const elapsed = Date.now() - lastPoll;
+      if (elapsed >= POLL.visibleGap) void poll();
+      else schedule(base - elapsed);
     };
+    const onOnline = () => void poll();
+    const onOffline = () => window.clearTimeout(timer);
+
     document.addEventListener('visibilitychange', onVisibility);
-    void poll();
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    if (!paused()) void poll();
 
     return () => {
-      cancelled = true;
-      window.clearTimeout(timerRef.current);
+      ctrl.abort();
+      window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
     };
-  }, [address, baseInterval, checkedAt]);
+  }, [address, base, checkedAt]);
 
   /** 立即拉一次；返回的 Promise 在这次请求结束时完成（供下拉刷新收尾） */
-  const refresh = useCallback(() => pollRef.current(), []);
+  const refresh = useCallback(() => refreshRef.current(), []);
 
   return { messages, status, checkedAt, refresh };
 }
