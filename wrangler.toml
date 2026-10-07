@@ -17,10 +17,10 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "midnight-card"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "d404ba25-a357-412c-aa5e-9f93f2a34f66"
 
 [vars]
-DOMAIN = "example.com"       # 收信域名（必须改成你的域名）
+DOMAIN = "sqw.cc.cd"       # 收信域名（必须改成你的域名）
 RETENTION_HOURS = "24"       # 邮件保留小时数
 MAX_RAW_BYTES = "1048576"    # 原始邮件超过此大小直接拒收（1MB）
 MAX_BODY_BYTES = "204800"    # 存储的正文上限，超出截断（200KB）
