@@ -59,6 +59,11 @@ html[data-perf='lite'] .card-shadow {
   filter: none;
 }
 
+/* 阴影带 blur 且每帧被写 transform：单独成层后模糊只栅格化一次，倾斜只走合成 */
+html[data-perf='full'] .card-shadow {
+  will-change: transform;
+}
+
 .card-tilt {
   position: relative;
   transform-style: preserve-3d;
@@ -558,7 +563,8 @@ html[data-perf='lite'] .face-drift {
 /* ---------- 减少动态效果 ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .card-tilt {
+  .card-tilt,
+  html[data-perf='full'] .card-shadow {
     will-change: auto;
   }
 

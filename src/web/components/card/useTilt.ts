@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { load, save } from '../../lib/storage';
+import { stepSpring, type SpringState } from './spring';
 
 const MAX_DEG = 10; // 最大倾斜角
 const PRESS_GAIN = 0.55; // 手指按住时，按下的那一点下沉多少（相对满幅）
@@ -9,9 +10,6 @@ const SCROLL_RANGE = 280; // 页面滚动多少 px 时卡片仰到最大
 const SCROLL_DEG = 9;
 const GYRO_RANGE = 22; // 手机相对“平时握持姿势”偏转多少度算满幅
 const BASE_DRIFT = 0.006; // 基准姿势缓慢跟随，握持角度变了也会自动回正
-// 弹簧参数：略欠阻尼，松手回正时有一点点回弹
-const STIFFNESS = 0.11;
-const DAMPING = 0.74;
 const VISIBLE_RATIO = 0.35; // 卡片露出不足这个比例就算离屏
 const GYRO_KEY = 'mc.gyro';
 const COARSE = '(hover: none) and (pointer: coarse)';
@@ -42,6 +40,8 @@ const clamp = (v: number, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
  * - 陀螺仪：Android 直接开启，iOS 在第一次点卡片时申请；
  * - 页面滚动：卡片滑走时向后仰，高光随之移动——没有陀螺仪的手机也“活”着。
  * 每帧直接写 transform，不经过 React；静止或离屏后停掉 rAF。
+ * 弹簧按真实帧间隔积分（spring.ts），不同刷新率手感一致；卡片尺寸只在需要时读一次并缓存，
+ * 指针移动时不再强制同步布局；离屏或页面隐藏时卸掉陀螺仪监听。
  * 返回 requestGyro：在用户点击卡片时调用，用于 iOS 申请权限。
  */
 export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (visible: boolean) => void) {
@@ -77,8 +77,9 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
     const sh = targets.shadow.current;
     if (!enabled || !st || !t) return;
 
-    const cur = { x: 0, y: 0 };
-    const vel = { x: 0, y: 0 };
+    const spring: SpringState = { cur: { x: 0, y: 0 }, vel: { x: 0, y: 0 } };
+    const cur = spring.cur;
+    let lastTs = 0;
     let hover = { x: 0, y: 0 };
     let touch = { x: 0, y: 0 };
     let gyro = { x: 0, y: 0 };
@@ -91,20 +92,11 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
       y: clamp(hover.y + touch.y + gyro.y),
     });
 
-    const render = () => {
+    const render = (ts: number) => {
       raf = 0;
-      const gl = goal();
-      vel.x = (vel.x + (gl.x - cur.x) * STIFFNESS) * DAMPING;
-      vel.y = (vel.y + (gl.y - cur.y) * STIFFNESS) * DAMPING;
-      cur.x += vel.x;
-      cur.y += vel.y;
-      const settled =
-        Math.abs(gl.x - cur.x) < 0.001 && Math.abs(gl.y - cur.y) < 0.001 && Math.abs(vel.x) < 0.0005 && Math.abs(vel.y) < 0.0005;
-      if (settled) {
-        cur.x = gl.x;
-        cur.y = gl.y;
-        vel.x = vel.y = 0;
-      }
+      // 动画刚开始的第一帧按 60fps 一帧算
+      const settled = stepSpring(spring, goal(), lastTs ? ts - lastTs : 1000 / 60);
+      lastTs = settled ? 0 : ts;
       const rx = -cur.y * MAX_DEG + scroll * SCROLL_DEG;
       const ry = cur.x * MAX_DEG;
       t.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
@@ -123,8 +115,13 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
     };
 
     // ---- 鼠标 ----
+    // 缓存卡片位置：每次 pointermove 都读 getBoundingClientRect 会在刚写过 transform 后强制同步重算样式
+    let rect: DOMRect | null = null;
+    const invalidateRect = () => {
+      rect = null;
+    };
     const pos = (e: PointerEvent) => {
-      const r = st.getBoundingClientRect();
+      const r = (rect ??= st.getBoundingClientRect());
       return { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1) };
     };
     const onMove = (e: PointerEvent) => {
@@ -182,14 +179,31 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
 
     // ---- 滚动 ----
     const onScroll = () => {
+      invalidateRect();
       const s = clamp(window.scrollY / SCROLL_RANGE, 0, 1);
       if (Math.abs(s - scroll) < 0.002) return;
       scroll = s;
       kick();
     };
 
+    // 陀螺仪：想要开（权限已有/不需要）且卡片在屏幕上、页面可见时才挂监听；deviceorientation 在 Android 上约 60Hz
+    let gyroWanted = false;
+    let gyroAttached = false;
+    const syncGyro = () => {
+      const want = gyroWanted && visible && !document.hidden;
+      if (want === gyroAttached) return;
+      gyroAttached = want;
+      if (want) window.addEventListener('deviceorientation', onOrient);
+      else {
+        window.removeEventListener('deviceorientation', onOrient);
+        base = null; // 回来时重新取握持基准
+        gyro = { x: 0, y: 0 };
+      }
+    };
+
     const onVisibleChange = (e: Event) => {
       visible = (e as CustomEvent<boolean>).detail;
+      syncGyro();
       if (visible) {
         onScroll();
         kick();
@@ -204,10 +218,14 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', invalidateRect, { passive: true });
+    st.addEventListener('pointerenter', invalidateRect);
+    document.addEventListener('visibilitychange', syncGyro);
     attachGyro.current = () => {
       if (gyroOn.current) return;
       gyroOn.current = true;
-      window.addEventListener('deviceorientation', onOrient);
+      gyroWanted = true;
+      syncGyro();
     };
     // 不需要权限的平台（Android 等）直接开启
     if (window.matchMedia(COARSE).matches && !permissionRequest()) attachGyro.current();
@@ -222,6 +240,9 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', invalidateRect);
+      st.removeEventListener('pointerenter', invalidateRect);
+      document.removeEventListener('visibilitychange', syncGyro);
       window.removeEventListener('deviceorientation', onOrient);
       gyroOn.current = false;
       attachGyro.current = () => {};

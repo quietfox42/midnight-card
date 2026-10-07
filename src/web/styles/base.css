@@ -205,15 +205,6 @@ html[data-perf='full'] .page.is-receded {
   background: var(--tint-2);
 }
 
-.btn-ghost {
-  background: transparent;
-  color: var(--text);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--tint-2);
-}
-
 .btn-sm {
   min-height: 40px;
   padding: 0 var(--s-3);
@@ -493,6 +484,19 @@ html[data-perf='full'] .page.is-receded {
   .layout {
     gap: 64px;
   }
+}
+
+/* ---------- 低端机（lite 档）：纯装饰的循环动画全部停掉，合成器不必每帧出图 ---------- */
+
+html[data-perf='lite'] .skeleton-bar::after,
+html[data-perf='lite'] .empty-mark::after,
+html[data-perf='lite'] .inbox-status.is-live .live-dot {
+  animation: none;
+}
+
+/* 手机上关闭状态的详情面板在屏幕外，它的空状态呼吸动画看不见却一直在跑 */
+.detail.is-overlay:not(.is-open) .empty-mark::after {
+  animation: none;
 }
 
 /* ---------- 减少动态效果 ---------- */
