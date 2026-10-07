@@ -1,6 +1,7 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'preact/hooks';
 import type { CSSProperties, Ref } from 'preact';
 import { NfcIcon } from '../Icons';
+import { memo } from '../../lib/memo';
 import { EASE, haptic, play, useReducedMotion } from '../../lib/motion';
 import { BRAND, T } from '../../lib/text';
 import { useTilt, type TiltTargets } from './useTilt';
@@ -35,7 +36,7 @@ const FLIP_MS = 860;
  * 正面的材质（从下到上）：石墨渐变底 → 拉丝纹 → 环境慢扫高光（CSS）→ 跟随倾斜的镜面高光带 →
  * 光斑 → 全息箔边 → 斜切边高光。只有高光层在动，且只动 transform。
  */
-export function MidnightCard({ prefix, domain, hours, onCopy, onVisible, ref }: Props) {
+export const MidnightCard = memo(function MidnightCard({ prefix, domain, hours, onCopy, onVisible, ref }: Props) {
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -245,4 +246,4 @@ export function MidnightCard({ prefix, domain, hours, onCopy, onVisible, ref }: 
       <span className="card-slot" ref={slotRef} aria-hidden="true" />
     </div>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { ApiError, fetchMessages, type MailSummary } from './api';
+import { createStore, type Store } from './store';
 
 const MIN_INTERVAL = 10_000;
 const IDLE_INTERVAL = 30_000;
@@ -18,7 +19,8 @@ export type InboxStatus = 'loading' | 'ok' | 'error' | 'rate_limited';
 export function useInbox(address: string | null, pollSeconds: number) {
   const [messages, setMessages] = useState<MailSummary[]>([]);
   const [status, setStatus] = useState<InboxStatus>('loading');
-  const [checkedAt, setCheckedAt] = useState<number | null>(null);
+  // 每次轮询都会变：放在独立 store 里，只有状态行订阅，空轮询不会让 App 重渲染
+  const [checkedAt] = useState<Store<number | null>>(() => createStore<number | null>(null));
 
   const sinceRef = useRef(0);
   const lastNewRef = useRef(Date.now());
@@ -35,7 +37,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
     lastNewRef.current = Date.now();
     setMessages([]);
     setStatus('loading');
-    setCheckedAt(null);
+    checkedAt.set(null);
 
     const schedule = (delay: number) => {
       window.clearTimeout(timerRef.current);
@@ -56,7 +58,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
           setMessages((prev) => [...fresh, ...prev].slice(0, MAX_KEPT));
         }
         setStatus('ok');
-        setCheckedAt(Date.now());
+        checkedAt.set(Date.now());
         if (Date.now() - lastNewRef.current > IDLE_AFTER) next = Math.max(baseInterval, IDLE_INTERVAL);
       } catch (err) {
         if (cancelled) return;
@@ -91,7 +93,7 @@ export function useInbox(address: string | null, pollSeconds: number) {
       window.clearTimeout(timerRef.current);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [address, baseInterval]);
+  }, [address, baseInterval, checkedAt]);
 
   /** 立即拉一次；返回的 Promise 在这次请求结束时完成（供下拉刷新收尾） */
   const refresh = useCallback(() => pollRef.current(), []);

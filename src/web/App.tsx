@@ -14,27 +14,16 @@ import { T } from './lib/text';
 import { announce, useCopy } from './lib/useCopy';
 import { useInbox } from './lib/useInbox';
 import { usePullToRefresh } from './lib/usePullToRefresh';
+import { useMediaQuery, WIDE_QUERY } from './lib/store';
+import { addressKey, detailCodeKey } from './lib/copyKeys';
 
 // 详情和自定义抽屉不在首屏：首屏渲染后空闲时预取，打开时已就绪
 const MailDetail = lazy(() => import('./components/MailDetail').then((m) => m.MailDetail));
 const PrefixSheet = lazy(() => import('./components/PrefixSheet').then((m) => m.PrefixSheet));
 
 const ADDRESS_KEY = 'mc.address';
-const WIDE_QUERY = '(min-width: 900px)';
 const HISTORY_MARK = 'mc-mail';
 const PILL_MS = 6000;
-
-/** 宽屏双栏；窄屏时详情是从底部升起的全高面板 */
-function useIsWide(): boolean {
-  const [wide, setWide] = useState(() => window.matchMedia(WIDE_QUERY).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(WIDE_QUERY);
-    const onChange = () => setWide(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return wide;
-}
 
 export function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -46,7 +35,7 @@ export function App() {
   const [cardVisible, setCardVisible] = useState(true);
   const [pill, setPill] = useState(0); // 卡片不在屏幕上时到达的新邮件数
   const [copied, copy] = useCopy();
-  const wide = useIsWide();
+  const wide = useMediaQuery(WIDE_QUERY); // 宽屏双栏；窄屏时详情是从底部升起的全高面板
   const listScrollY = useRef(0);
   const cardRef = useRef<CardFx>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -79,10 +68,13 @@ export function App() {
     [inbox.messages, selectedId],
   );
 
+  const detailCopied = selectedId != null && copied === detailCodeKey(selectedId);
+
   // ---------- 列表 ↔ 详情 ----------
   const overlay = detailOpen && !wide; // 窄屏全高详情是否覆盖在列表之上
 
-  const openMail = (id: number) => {
+  // 下面的回调都要保持引用稳定：子组件是 memo 的，换新函数等于让它们全部重渲染
+  const openMail = useCallback((id: number) => {
     setSelectedId(id);
     if (wide) return;
     listScrollY.current = window.scrollY;
@@ -91,7 +83,7 @@ export function App() {
     setDetailOpen(true);
     // 记一条历史，让手机的系统返回手势回到列表而不是离开页面
     if (history.state?.[HISTORY_MARK] !== true) history.pushState({ [HISTORY_MARK]: true }, '');
-  };
+  }, [wide]);
 
   const closeMail = useCallback(() => {
     if (history.state?.[HISTORY_MARK] === true) history.back(); // 由 popstate 收尾
@@ -134,9 +126,19 @@ export function App() {
     [config],
   );
 
-  const copyAddress = async () => {
-    if (address && (await copy(address, 'address'))) cardRef.current?.pulse();
-  };
+  const copyAddress = useCallback(async () => {
+    if (address && (await copy(address, addressKey))) cardRef.current?.pulse();
+  }, [address, copy]);
+  const renew = useCallback(() => changePrefix(randomPrefix()), [changePrefix]);
+  const openSheet = useCallback(() => setSheetOpen(true), []);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const submitPrefix = useCallback(
+    (p: string) => {
+      changePrefix(p);
+      setSheetOpen(false);
+    },
+    [changePrefix],
+  );
 
   // ---------- 新邮件 ----------
   const onArrive = useCallback((count: number) => {
@@ -228,12 +230,12 @@ export function App() {
 
             <ActionDock
               disabled={!address}
-              copied={copied === 'address'}
+              copied={copied === addressKey}
               compact={!cardVisible && !wide}
               address={address}
               onCopy={copyAddress}
-              onRenew={() => changePrefix(randomPrefix())}
-              onCustomize={() => setSheetOpen(true)}
+              onRenew={renew}
+              onCustomize={openSheet}
             />
           </div>
 
@@ -243,7 +245,7 @@ export function App() {
               address={address}
               summary={selected}
               open={false}
-              copied={copied}
+              copied={detailCopied}
               onCopy={copy}
               onBack={closeMail}
             />
@@ -264,7 +266,7 @@ export function App() {
           address={address}
           summary={selected}
           open={detailOpen}
-          copied={copied}
+          copied={detailCopied}
           onCopy={copy}
           onBack={closeMail}
         />
@@ -276,11 +278,8 @@ export function App() {
           domain={config.domain}
           current={prefix}
           reserved={config.reserved}
-          onClose={() => setSheetOpen(false)}
-          onSubmit={(p) => {
-            changePrefix(p);
-            setSheetOpen(false);
-          }}
+          onClose={closeSheet}
+          onSubmit={submitPrefix}
         />
       )}
       <Toast />

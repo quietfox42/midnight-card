@@ -1,6 +1,7 @@
 import { useRef } from 'preact/hooks';
 import { CheckIcon, CopyIcon, EditIcon, RenewIcon } from './Icons';
-import { EASE, play, useReducedMotion } from '../lib/motion';
+import { memo } from '../lib/memo';
+import { EASE, play, prefersReducedMotion } from '../lib/motion';
 import { T } from '../lib/text';
 
 interface Props {
@@ -18,8 +19,7 @@ interface Props {
  * 拇指区的悬浮金属胶囊：[复制地址][换一个][自定义]。
  * 手机竖屏固定在底部；宽屏和矮屏横屏回到卡片下方。
  */
-export function ActionDock({ disabled, copied, compact, address, onCopy, onRenew, onCustomize }: Props) {
-  const reduced = useReducedMotion();
+export const ActionDock = memo(function ActionDock({ disabled, copied, compact, address, onCopy, onRenew, onCustomize }: Props) {
   const renewIcon = useRef<HTMLSpanElement>(null);
   const [prefix, domain] = address ? address.split('@') : ['', ''];
 
@@ -63,7 +63,7 @@ export function ActionDock({ disabled, copied, compact, address, onCopy, onRenew
           className="dock-tool"
           disabled={disabled}
           onClick={() => {
-            if (!reduced) play(renewIcon.current, [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 860, easing: EASE.spring });
+            if (!prefersReducedMotion()) play(renewIcon.current, [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 860, easing: EASE.spring });
             onRenew();
           }}
         >
@@ -79,4 +79,4 @@ export function ActionDock({ disabled, copied, compact, address, onCopy, onRenew
       </div>
     </div>
   );
-}
+});

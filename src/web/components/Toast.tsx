@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { memo } from '../lib/memo';
 import { ANNOUNCE_EVENT, TOAST_EVENT, type ToastDetail } from '../lib/useCopy';
 
 const SHOW_MS = 2200;
@@ -8,7 +9,8 @@ const SHOW_MS = 2200;
  * - toast()：看得见的药丸（错误、无法就地反馈的结果），有进场和退场动画；
  * - announce()：只给读屏的礼貌播报（复制成功这类已经在原位有视觉反馈的事）。
  */
-export function Toast() {
+// 没有 props：memo 后 App 重渲染时直接跳过
+export const Toast = memo(function Toast() {
   const [item, setItem] = useState<(ToastDetail & { seq: number }) | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [spoken, setSpoken] = useState('');
@@ -54,4 +56,4 @@ export function Toast() {
       </div>
     </>
   );
-}
+});

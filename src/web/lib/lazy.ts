@@ -1,5 +1,6 @@
 import { h, type ComponentType } from 'preact';
 import { useEffect, useReducer } from 'preact/hooks';
+import { memo } from './memo';
 
 export type LazyComponent<P> = ComponentType<P> & { preload(): Promise<void> };
 
@@ -37,7 +38,8 @@ export function lazy<P extends object>(load: () => Promise<ComponentType<P>>): L
     }, []);
     return loaded ? h(loaded, props) : null;
   }
-  return Object.assign(Lazy, { preload });
+  // memo：父组件重渲染而 props 不变时，懒加载的组件也跳过
+  return Object.assign(memo(Lazy), { preload });
 }
 
 /** 浏览器空闲时执行（不支持 requestIdleCallback 的 Safari 退回 setTimeout） */

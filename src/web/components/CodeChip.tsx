@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { CheckIcon } from './Icons';
-import { EASE, play, useReducedMotion } from '../lib/motion';
+import { memo } from '../lib/memo';
+import { EASE, play, prefersReducedMotion } from '../lib/motion';
 import { T } from '../lib/text';
 
 interface Props {
@@ -11,12 +12,11 @@ interface Props {
 }
 
 /** 验证码：金色大号等宽字，一点就复制。两种状态叠放在同一格，切换时不改变尺寸。 */
-export function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
-  const reduced = useReducedMotion();
+export const CodeChip = memo(function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
   const sweepRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (!copied || reduced) return;
+    if (!copied || prefersReducedMotion()) return;
     play(
       sweepRef.current,
       [
@@ -26,7 +26,7 @@ export function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
       ],
       { duration: 700, easing: EASE.out },
     );
-  }, [copied, reduced]);
+  }, [copied]);
 
   return (
     <button
@@ -51,4 +51,4 @@ export function CodeChip({ code, copied, onCopy, size = 'md' }: Props) {
       </span>
     </button>
   );
-}
+});

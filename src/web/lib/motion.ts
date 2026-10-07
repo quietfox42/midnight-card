@@ -1,5 +1,5 @@
 // 动效约定：只动 transform / opacity；所有入口都先看 prefers-reduced-motion。
-import { useEffect, useState } from 'preact/hooks';
+import { useMediaQuery } from './store';
 
 const QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -22,16 +22,8 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia(QUERY).matches;
 }
 
-export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(prefersReducedMotion);
-  useEffect(() => {
-    const mq = window.matchMedia(QUERY);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
+/** 只在渲染结果依赖它时用；事件处理和动画里直接调 prefersReducedMotion() */
+export const useReducedMotion = (): boolean => useMediaQuery(QUERY);
 
 /**
  * 性能档：中低端机（≤4 核或 ≤4GB 内存）用 lite，关掉环境光扫、背景缩放等纯装饰效果。
@@ -52,6 +44,9 @@ export function perfTier(): PerfTier {
 
 /** 轻触感反馈；不支持的设备（包括 iOS Safari）静默忽略 */
 export function haptic(pattern: number | number[] = 10): void {
+  // 用户还没和页面交互过时浏览器会拒绝并在控制台报错（例如新邮件在打开页面后自动到达）
+  const activation = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation;
+  if (activation && !activation.hasBeenActive) return;
   try {
     navigator.vibrate?.(pattern);
   } catch {

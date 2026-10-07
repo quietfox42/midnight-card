@@ -1,14 +1,18 @@
 import { CodeChip } from './CodeChip';
 import { LinkIcon } from './Icons';
 import type { MailSummary } from '../lib/api';
-import { senderName, shortTime } from '../lib/format';
+import { senderName } from '../lib/format';
+import { slipCodeKey } from '../lib/copyKeys';
+import { memo } from '../lib/memo';
+import { RelTime } from './RelTime';
 import { T } from '../lib/text';
 
 interface Props {
   mail: MailSummary;
   selected: boolean;
   unread: boolean;
-  copied: string | null;
+  /** 这一封的验证码是否刚被复制（只传布尔值，复制别的邮件时这一行不重渲染） */
+  copied: boolean;
   onCopy: (value: string, key: string) => void;
   onOpen: (id: number) => void;
 }
@@ -20,7 +24,7 @@ export function monogram(sender: string): string {
 }
 
 /** 收件箱里的一封邮件：分组面板里的一行，整行可点开详情，验证码和链接叠在上层。 */
-export function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: Props) {
+export const MailSlip = memo(function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: Props) {
   return (
     <li className={`slip${selected ? ' is-selected' : ''}${unread ? ' is-unread' : ''}`} data-slip={m.id}>
       <span className="slip-glow" aria-hidden="true" />
@@ -32,7 +36,7 @@ export function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: 
         <div className="slip-meta">
           <span className="slip-sender">{senderName(m.sender) || T.unknownSender}</span>
           <time className="slip-time" dateTime={new Date(m.received_at).toISOString()}>
-            {shortTime(m.received_at)}
+            <RelTime ms={m.received_at} />
           </time>
         </div>
         <button
@@ -48,7 +52,7 @@ export function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: 
         {(m.code || m.link) && (
           <div className="slip-actions">
             {m.code && (
-              <CodeChip code={m.code} copied={copied === `code-${m.id}`} onCopy={() => onCopy(m.code!, `code-${m.id}`)} />
+              <CodeChip code={m.code} copied={copied} onCopy={() => onCopy(m.code!, slipCodeKey(m.id))} />
             )}
             {m.link && (
               <a className="btn btn-secondary btn-sm" href={m.link} target="_blank" rel="noopener noreferrer">
@@ -61,4 +65,4 @@ export function MailSlip({ mail: m, selected, unread, copied, onCopy, onOpen }: 
       </div>
     </li>
   );
-}
+});

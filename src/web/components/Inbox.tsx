@@ -1,9 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { MailSlip } from './MailSlip';
 import { CopyIcon, MailIcon, RefreshIcon } from './Icons';
 import type { MailSummary } from '../lib/api';
-import { shortTime } from '../lib/format';
-import { EASE, play, useReducedMotion } from '../lib/motion';
+import { slipCodeKey } from '../lib/copyKeys';
+import { memo } from '../lib/memo';
+import { EASE, play, prefersReducedMotion } from '../lib/motion';
+import { RelTime } from './RelTime';
+import { useStore, type Store } from '../lib/store';
 import { T } from '../lib/text';
 import type { InboxStatus } from '../lib/useInbox';
 
@@ -11,7 +14,7 @@ interface Props {
   ready: boolean;
   messages: MailSummary[];
   status: InboxStatus;
-  checkedAt: number | null;
+  checkedAt: Store<number | null>;
   selectedId: number | null;
   copied: string | null;
   onCopy: (value: string, key: string) => void;
@@ -22,9 +25,8 @@ interface Props {
   onArrive: (count: number) => void;
 }
 
-export function Inbox(props: Props) {
+export const Inbox = memo(function Inbox(props: Props) {
   const { ready, messages, status, checkedAt, selectedId, copied, onCopy, onCopyAddress, onOpen, onRefresh, onArrive } = props;
-  const reduced = useReducedMotion();
   const listRef = useRef<HTMLUListElement>(null);
   const slotRef = useRef<HTMLSpanElement>(null);
   const countRef = useRef<HTMLSpanElement>(null);
@@ -53,6 +55,7 @@ export function Inbox(props: Props) {
     for (const m of fresh) seen.current.add(m.id);
     setUnread((prev) => new Set([...prev, ...fresh.map((m) => m.id)]));
     onArrive(fresh.length);
+    const reduced = prefersReducedMotion();
 
     play(slotRef.current, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }], { duration: 1400, easing: 'ease-out' });
     if (!reduced) {
@@ -84,18 +87,21 @@ export function Inbox(props: Props) {
         easing: 'ease-out',
       });
     });
-  }, [messages, status, onArrive, reduced]);
+  }, [messages, status, onArrive]);
 
-  const open = (id: number) => {
-    if (unread.has(id)) {
+  // 稳定引用：MailSlip 是 memo 的，每次换新函数会让整列重渲染
+  const open = useCallback(
+    (id: number) => {
       setUnread((prev) => {
+        if (!prev.has(id)) return prev; // 返回同一个对象，不触发重渲染
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
-    }
-    onOpen(id);
-  };
+      onOpen(id);
+    },
+    [onOpen],
+  );
 
   const warn = status === 'error' || status === 'rate_limited';
   const showSkeleton = status === 'loading' && messages.length === 0;
@@ -111,13 +117,7 @@ export function Inbox(props: Props) {
             </span>
           )}
         </h2>
-        <p className={`inbox-status${warn ? ' is-warn' : ''}${status === 'ok' ? ' is-live' : ''}`} aria-live="polite">
-          <span className="live-dot" aria-hidden="true" />
-          <span>
-            {T.status[status]}
-            {status === 'ok' && checkedAt ? ` · ${shortTime(checkedAt)}` : ''}
-          </span>
-        </p>
+        <InboxStatus status={status} warn={warn} checkedAt={checkedAt} />
         <button
           type="button"
           className="icon-btn inbox-refresh"
@@ -125,7 +125,7 @@ export function Inbox(props: Props) {
           title={T.refresh}
           disabled={!ready}
           onClick={() => {
-            if (!reduced) play(refreshIcon.current, [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 700, easing: EASE.out });
+            if (!prefersReducedMotion()) play(refreshIcon.current, [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 700, easing: EASE.out });
             onRefresh();
           }}
         >
@@ -171,7 +171,7 @@ export function Inbox(props: Props) {
                 mail={m}
                 selected={m.id === selectedId}
                 unread={unread.has(m.id)}
-                copied={copied}
+                copied={copied === slipCodeKey(m.id)}
                 onCopy={onCopy}
                 onOpen={open}
               />
@@ -181,4 +181,31 @@ export function Inbox(props: Props) {
       </div>
     </section>
   );
-}
+});
+
+/** 状态行：每次轮询都会更新“检查时间”，单独订阅，不连带整个收件箱重渲染 */
+const InboxStatus = memo(function InboxStatus({
+  status,
+  warn,
+  checkedAt,
+}: {
+  status: InboxStatus;
+  warn: boolean;
+  checkedAt: Store<number | null>;
+}) {
+  const at = useStore(checkedAt);
+  return (
+    <p className={`inbox-status${warn ? ' is-warn' : ''}${status === 'ok' ? ' is-live' : ''}`} aria-live="polite">
+      <span className="live-dot" aria-hidden="true" />
+      <span>
+        {T.status[status]}
+        {status === 'ok' && at ? (
+          <>
+            {' · '}
+            <RelTime ms={at} />
+          </>
+        ) : null}
+      </span>
+    </p>
+  );
+});

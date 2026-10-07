@@ -15,5 +15,5 @@
     "noUnusedLocals": true,
     "types": ["vite/client"]
   },
-  "include": ["src/web", "src/shared"]
+  "include": ["src/web", "src/shared", "test/web"]
 }

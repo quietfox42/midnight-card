@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { CodeChip } from './CodeChip';
 import { BackIcon, LinkIcon, MailIcon } from './Icons';
 import { monogram } from './MailSlip';
 import { fetchMessage, type MailDetail as Detail, type MailSummary } from '../lib/api';
 import { fullTime, senderName } from '../lib/format';
+import { detailCodeKey } from '../lib/copyKeys';
 import { T } from '../lib/text';
 import { useSheetDrag } from '../lib/useSheetDrag';
 
@@ -13,7 +14,7 @@ const cache = new Map<string, Detail>();
 // iframe 内的策略：禁止一切外部资源（图片、字体、样式、脚本），只允许内联样式和 data: 图片
 const FRAME_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:";
 
-function buildSrcDoc(html: string): string {
+export function buildSrcDoc(html: string): string {
   return (
     '<!doctype html><html><head><meta charset="utf-8">' +
     `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">` +
@@ -29,7 +30,8 @@ interface Props {
   address: string | null;
   summary: MailSummary | null;
   open: boolean;
-  copied: string | null;
+  /** 详情里的验证码是否刚被复制 */
+  copied: boolean;
   onCopy: (value: string, key: string) => void;
   onBack: () => void;
 }
@@ -88,7 +90,9 @@ export function MailDetail({ variant, address, summary, open, copied, onCopy, on
   });
 
   const showHtml = !!detail?.html && (mode === 'html' || !detail.text);
-  const codeKey = summary ? `detail-code-${summary.id}` : '';
+  const codeKey = summary ? detailCodeKey(summary.id) : '';
+  // 正文可达 200KB：只在内容变化时拼一次，而不是每次渲染都拼
+  const srcDoc = useMemo(() => (detail?.html ? buildSrcDoc(detail.html) : ''), [detail]);
 
   const actions = summary && (summary.code || summary.link) && (
     <>
@@ -96,7 +100,7 @@ export function MailDetail({ variant, address, summary, open, copied, onCopy, on
         <CodeChip
           size={overlay ? 'md' : 'lg'}
           code={summary.code}
-          copied={copied === codeKey}
+          copied={copied}
           onCopy={() => onCopy(summary.code!, codeKey)}
         />
       )}
@@ -188,7 +192,7 @@ export function MailDetail({ variant, address, summary, open, copied, onCopy, on
                         // 不给 allow-scripts / allow-same-origin：脚本不执行，内容拿不到本站任何数据
                         sandbox="allow-popups allow-popups-to-escape-sandbox"
                         referrerPolicy="no-referrer"
-                        srcDoc={buildSrcDoc(detail.html!)}
+                        srcDoc={srcDoc}
                       />
                     </div>
                   ) : (
