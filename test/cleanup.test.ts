@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanup, CLEANUP_BATCH } from '../src/worker/index';
+import { cleanup, CLEANUP_BATCH } from '../src/worker/cleanup';
 import { insert } from './helpers/d1';
 import { createEnv } from './helpers/env';
 
@@ -22,5 +22,12 @@ describe('定时清理', () => {
     const { env, d1 } = createEnv();
     expect(await cleanup(env, NOW)).toBe(0);
     expect(d1.queries).toHaveLength(1);
+  });
+});
+
+describe('Worker 入口', () => {
+  it('入口模块只有 default 导出（具名导出会被当成入口点，运行时拒绝启动）', async () => {
+    const mod = await import('../src/worker/index');
+    expect(Object.keys(mod)).toEqual(['default']);
   });
 });

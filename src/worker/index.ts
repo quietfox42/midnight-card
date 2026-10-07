@@ -1,10 +1,9 @@
 import { handleApi } from './api';
+import { cleanup } from './cleanup';
 import { handleEmail } from './email';
-import { getConfig, type Env } from './env';
+import type { Env } from './env';
 
-/** 每批删除的行数与每次 Cron 最多跑几批：单条语句耗时有界，积压时分多次 Cron 消化 */
-export const CLEANUP_BATCH = 5000;
-export const CLEANUP_MAX_BATCHES = 20;
+// 注意：入口模块的每个具名导出都会被 Workers 当作入口点，这里只能有 default 导出。
 
 export default {
   // 只有 /api/* 会进到这里（见 wrangler.toml assets.run_worker_first），其余由静态资源直接响应
@@ -22,19 +21,3 @@ export default {
     await cleanup(env);
   },
 } satisfies ExportedHandler<Env>;
-
-/** 分批删除过期邮件，走 idx_emails_received_at。返回删除的总行数。 */
-export async function cleanup(env: Env, now = Date.now()): Promise<number> {
-  const cutoff = now - getConfig(env).retentionMs;
-  const stmt = env.DB.prepare(
-    'DELETE FROM emails WHERE id IN (SELECT id FROM emails WHERE received_at < ? LIMIT ?)',
-  );
-  let total = 0;
-  for (let i = 0; i < CLEANUP_MAX_BATCHES; i++) {
-    const { meta } = await stmt.bind(cutoff, CLEANUP_BATCH).run();
-    const changes = meta.changes ?? 0;
-    total += changes;
-    if (changes < CLEANUP_BATCH) break;
-  }
-  return total;
-}
