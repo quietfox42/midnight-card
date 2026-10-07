@@ -1,7 +1,9 @@
-import { CodeChip } from './CodeChip';
-import { LinkIcon, MailIcon, RefreshIcon } from './Icons';
+import { useLayoutEffect, useRef } from 'react';
+import { MailSlip } from './MailSlip';
+import { MailIcon, RefreshIcon } from './Icons';
 import type { MailSummary } from '../lib/api';
-import { senderName, shortTime } from '../lib/format';
+import { shortTime } from '../lib/format';
+import { EASE, play, useReducedMotion } from '../lib/motion';
 import { T } from '../lib/text';
 import type { InboxStatus } from '../lib/useInbox';
 
@@ -15,9 +17,64 @@ interface Props {
   onCopy: (value: string, key: string) => void;
   onOpen: (id: number) => void;
   onRefresh: () => void;
+  /** 轮询拿到新邮件（首次加载不算） */
+  onArrive: (count: number) => void;
 }
 
-export function Inbox({ ready, messages, status, checkedAt, selectedId, copied, onCopy, onOpen, onRefresh }: Props) {
+export function Inbox(props: Props) {
+  const { ready, messages, status, checkedAt, selectedId, copied, onCopy, onOpen, onRefresh, onArrive } = props;
+  const reduced = useReducedMotion();
+  const listRef = useRef<HTMLUListElement>(null);
+  const slotRef = useRef<HTMLSpanElement>(null);
+  const refreshIcon = useRef<HTMLSpanElement>(null);
+  const seen = useRef(new Set<number>());
+  const primed = useRef(false);
+
+  // 新邮件像卡片一样从卡槽滑出：整列先上移到槽口之上（被裁掉），再落回原位
+  useLayoutEffect(() => {
+    if (status === 'loading') {
+      // 新地址：重新记账，首批邮件不播动画
+      seen.current.clear();
+      primed.current = false;
+      return;
+    }
+    if (!primed.current) {
+      for (const m of messages) seen.current.add(m.id);
+      primed.current = true;
+      return;
+    }
+    const fresh = messages.filter((m) => !seen.current.has(m.id));
+    if (!fresh.length) return;
+    for (const m of fresh) seen.current.add(m.id);
+    onArrive(fresh.length);
+
+    play(slotRef.current, [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }], { duration: 1400, easing: 'ease-out' });
+
+    const ul = listRef.current;
+    if (!ul) return;
+    const els = fresh
+      .map((m) => ul.querySelector<HTMLElement>(`[data-slip="${m.id}"]`))
+      .filter((el): el is HTMLElement => !!el);
+    if (!els.length) return;
+
+    if (reduced) {
+      for (const el of els) play(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+      return;
+    }
+    const first = els[0];
+    const last = els[els.length - 1];
+    const gap = parseFloat(getComputedStyle(ul).rowGap) || 0;
+    const shift = last.offsetTop + last.offsetHeight - first.offsetTop + gap;
+    play(ul, [{ transform: `translate3d(0, ${-shift}px, 0)` }, { transform: 'none' }], { duration: 680, easing: EASE.out });
+    els.forEach((el, i) => {
+      play(el.querySelector('.slip-glow'), [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }], {
+        duration: 1800,
+        delay: 380 + i * 80,
+        easing: 'ease-out',
+      });
+    });
+  }, [messages, status, onArrive, reduced]);
+
   const warn = status === 'error' || status === 'rate_limited';
   const showSkeleton = status === 'loading' && messages.length === 0;
 
@@ -27,9 +84,14 @@ export function Inbox({ ready, messages, status, checkedAt, selectedId, copied, 
         <div className="inbox-title-row">
           <h2 id="inbox-title" className="section-title">
             {T.inbox}
-            {messages.length > 0 && <span className="count">{messages.length}</span>}
+            {messages.length > 0 && (
+              <span className="count" key={messages.length}>
+                {messages.length}
+              </span>
+            )}
           </h2>
-          <p className={`inbox-status${warn ? ' is-warn' : ''}`} aria-live="polite">
+          <p className={`inbox-status${warn ? ' is-warn' : ''}${status === 'ok' ? ' is-live' : ''}`} aria-live="polite">
+            <span className="live-dot" aria-hidden="true" />
             {T.status[status]}
             {status === 'ok' && checkedAt ? ` · ${shortTime(checkedAt)}` : ''}
           </p>
@@ -40,69 +102,57 @@ export function Inbox({ ready, messages, status, checkedAt, selectedId, copied, 
           aria-label={T.refresh}
           title={T.refresh}
           disabled={!ready}
-          onClick={onRefresh}
+          onClick={() => {
+            if (!reduced) play(refreshIcon.current, [{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], { duration: 700, easing: EASE.out });
+            onRefresh();
+          }}
         >
-          <RefreshIcon />
+          <span className="icon-wrap" ref={refreshIcon}>
+            <RefreshIcon />
+          </span>
         </button>
       </header>
 
-      {showSkeleton ? (
-        <ul className="mail-list" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <li key={i} className="mail-item is-skeleton">
-              <span className="skeleton-bar" style={{ width: '38%' }} />
-              <span className="skeleton-bar" style={{ width: '82%' }} />
-              <span className="skeleton-bar skeleton-code" />
-            </li>
-          ))}
-        </ul>
-      ) : messages.length === 0 ? (
-        <div className="empty">
-          <MailIcon />
-          <h3 className="empty-title">{T.emptyTitle}</h3>
-          <p className="empty-body">{T.emptyBody}</p>
-        </div>
-      ) : (
-        <ul className="mail-list">
-          {messages.map((m) => (
-            <li key={m.id} className={`mail-item${m.id === selectedId ? ' is-selected' : ''}`}>
-              <div className="mail-meta">
-                <span className="mail-sender">{senderName(m.sender) || T.unknownSender}</span>
-                <time className="mail-time" dateTime={new Date(m.received_at).toISOString()}>
-                  {shortTime(m.received_at)}
-                </time>
-              </div>
-              {/* 整行可点：按钮的 ::after 铺满整个条目，验证码和链接按钮叠在其上 */}
-              <button
-                type="button"
-                className="mail-open"
-                data-mail-id={m.id}
-                aria-current={m.id === selectedId ? 'true' : undefined}
-                onClick={() => onOpen(m.id)}
-              >
-                {m.subject || T.noSubject}
-              </button>
-              {(m.code || m.link) && (
-                <div className="mail-actions">
-                  {m.code && (
-                    <CodeChip
-                      code={m.code}
-                      copied={copied === `code-${m.id}`}
-                      onCopy={() => onCopy(m.code!, `code-${m.id}`)}
-                    />
-                  )}
-                  {m.link && (
-                    <a className="btn btn-secondary btn-sm" href={m.link} target="_blank" rel="noopener noreferrer">
-                      {T.openLink}
-                      <LinkIcon />
-                    </a>
-                  )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="slot" aria-hidden="true">
+        <span className="slot-glow" ref={slotRef} />
+      </div>
+
+      <div className="slip-well">
+        {showSkeleton ? (
+          <ul className="slip-list" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="slip is-skeleton">
+                <span className="skeleton-bar slip-mono" />
+                <span className="slip-main">
+                  <span className="skeleton-bar" style={{ width: '38%' }} />
+                  <span className="skeleton-bar" style={{ width: '82%' }} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : messages.length === 0 ? (
+          <div className="empty">
+            <span className="empty-mark" aria-hidden="true">
+              <MailIcon />
+            </span>
+            <h3 className="empty-title">{T.emptyTitle}</h3>
+            <p className="empty-body">{T.emptyBody}</p>
+          </div>
+        ) : (
+          <ul className="slip-list" ref={listRef}>
+            {messages.map((m) => (
+              <MailSlip
+                key={m.id}
+                mail={m}
+                selected={m.id === selectedId}
+                copied={copied}
+                onCopy={onCopy}
+                onOpen={onOpen}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

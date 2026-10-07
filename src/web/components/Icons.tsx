@@ -70,3 +70,17 @@ export const MailIcon = () => (
     <path d="m4 7 8 6 8-6" />
   </svg>
 );
+
+export const NfcIcon = () => (
+  <svg {...base} className="card-nfc" strokeWidth={1.5}>
+    <path d="M8 8.5a5 5 0 0 1 0 7" />
+    <path d="M11.5 6a8.5 8.5 0 0 1 0 12" />
+    <path d="M15 3.5a12 12 0 0 1 0 17" />
+  </svg>
+);
+
+export const ChevronIcon = () => (
+  <svg {...base} width={16} height={16}>
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);

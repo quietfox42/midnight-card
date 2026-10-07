@@ -14,6 +14,10 @@ export const T = {
   copyFailed: '无法写入剪贴板。请长按文字手动复制。',
   addressPlaceholder: '正在生成地址',
 
+  cardFoot: (hours: number) => `公开 · ${hours} 小时有效`,
+  issuing: '正在签发新地址',
+  noticeSummary: (hours: number) => `公开地址 · ${hours} 小时后自动删除`,
+
   publicNotice: (hours: number) =>
     `这个地址是公开的，知道它的人都能看到邮件。请勿用于重要账号。邮件 ${hours} 小时后自动删除。`,
 

@@ -1,0 +1,73 @@
+/* 午夜黑卡 · 设计变量
+   只有深色主题；不引外链字体或图片（public/_headers 的 CSP），噪点用内联 SVG data: URI。 */
+
+:root {
+  color-scheme: dark;
+
+  /* 底色：近黑带一点蓝 */
+  --bg: #05070c;
+  --bg-raise: #0b0e16;
+  --panel: rgba(255, 255, 255, 0.028);
+  --panel-hi: rgba(255, 255, 255, 0.055);
+
+  /* 描边三档 */
+  --line: rgba(196, 204, 222, 0.1);
+  --line-2: rgba(196, 204, 222, 0.18);
+  --line-3: rgba(196, 204, 222, 0.32);
+
+  --text: #eceff5;
+  --text-2: #a5adbe;
+  --text-3: #6c7486;
+
+  /* 银：主强调；金：只用于芯片、验证码等极少数位置 */
+  --silver-hi: #f6f8fc;
+  --silver: #c8cfdc;
+  --silver-lo: #8f98ac;
+  --silver-grad: linear-gradient(180deg, #f8fafd 0%, #d0d6e2 52%, #a2abbd 100%);
+  --gold-hi: #f2dba5;
+  --gold: #d3b16b;
+  --gold-lo: #96733a;
+  --gold-grad: linear-gradient(180deg, #f4dfae 0%, #d6b46f 48%, #a3803f 100%);
+  --ink: #090c13;
+  --glow: rgba(214, 224, 245, 0.3);
+  --glow-gold: rgba(226, 190, 112, 0.34);
+
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 20px;
+  --tap: 44px;
+  --gutter: 16px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --dock-h: 96px; /* 底部操作条占用的高度（不含安全区） */
+
+  /* 动效：与 lib/motion.ts 的 EASE 一致 */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 0.75, 0.1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 380ms;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}

@@ -29,7 +29,7 @@ async function writeClipboard(value: string): Promise<boolean> {
 
 /**
  * 复制到剪贴板。成功后：被复制的 key 在 1.5 秒内标记为“已复制”，
- * 弹出底部提示，并在支持的设备上轻微震动。
+ * 弹出底部提示，并在支持的设备上轻微震动。返回是否成功，供调用方播放动效。
  */
 export function useCopy() {
   const [copied, setCopied] = useState<string | null>(null);
@@ -37,17 +37,18 @@ export function useCopy() {
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const copy = useCallback(async (value: string, key: string = value) => {
+  const copy = useCallback(async (value: string, key: string = value): Promise<boolean> => {
     const ok = await writeClipboard(value);
     if (!ok) {
       toast(T.copyFailed);
-      return;
+      return false;
     }
     navigator.vibrate?.(12);
     toast(T.copied);
     setCopied(key);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setCopied(null), FEEDBACK_MS);
+    return true;
   }, []);
 
   return [copied, copy] as const;

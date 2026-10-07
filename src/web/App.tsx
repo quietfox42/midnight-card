@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPrefix } from '../shared/address';
-import { Actions } from './components/Actions';
-import { BlackCard } from './components/BlackCard';
+import { ActionDock } from './components/ActionDock';
+import { MidnightCard, type CardFx } from './components/card/MidnightCard';
+import { ChevronIcon } from './components/Icons';
 import { Inbox } from './components/Inbox';
 import { MailDetail } from './components/MailDetail';
 import { PrefixSheet } from './components/PrefixSheet';
@@ -39,6 +40,7 @@ export function App() {
   const [copied, copy] = useCopy();
   const wide = useIsWide();
   const listScrollY = useRef(0);
+  const cardRef = useRef<CardFx>(null);
 
   useEffect(() => {
     fetchConfig()
@@ -109,7 +111,11 @@ export function App() {
     [config],
   );
 
-  const copyAddress = () => address && copy(address, 'address');
+  const copyAddress = async () => {
+    if (address && (await copy(address, 'address'))) cardRef.current?.pulse();
+  };
+
+  const onArrive = useCallback(() => cardRef.current?.deliver(), []);
 
   if (configError) {
     return (
@@ -136,15 +142,28 @@ export function App() {
         <main className="layout">
           <div className="column-main">
             <section className="hero" aria-label={T.addressLabel}>
-              <BlackCard prefix={prefix} domain={config?.domain ?? null} onCopy={copyAddress} />
-              <Actions
+              <MidnightCard
+                ref={cardRef}
+                prefix={prefix}
+                domain={config?.domain ?? null}
+                hours={hours}
+                onCopy={copyAddress}
+              />
+              <ActionDock
                 disabled={!address}
                 copied={copied === 'address'}
                 onCopy={copyAddress}
                 onRenew={() => changePrefix(randomPrefix())}
                 onCustomize={() => setSheetOpen(true)}
               />
-              <p className="notice">{T.publicNotice(hours)}</p>
+              <details className="notice">
+                <summary>
+                  <span className="notice-dot" aria-hidden="true" />
+                  {T.noticeSummary(hours)}
+                  <ChevronIcon />
+                </summary>
+                <p>{T.publicNotice(hours)}</p>
+              </details>
             </section>
 
             <Inbox
@@ -157,17 +176,34 @@ export function App() {
               onCopy={copy}
               onOpen={openMail}
               onRefresh={inbox.refresh}
+              onArrive={onArrive}
             />
           </div>
 
           {wide && (
-            <MailDetail address={address} summary={selected} open={false} copied={copied} onCopy={copy} onBack={closeMail} />
+            <MailDetail
+              variant="pane"
+              address={address}
+              summary={selected}
+              open={false}
+              copied={copied}
+              onCopy={copy}
+              onBack={closeMail}
+            />
           )}
         </main>
       </div>
 
       {!wide && (
-        <MailDetail address={address} summary={selected} open={detailOpen} copied={copied} onCopy={copy} onBack={closeMail} />
+        <MailDetail
+          variant="overlay"
+          address={address}
+          summary={selected}
+          open={detailOpen}
+          copied={copied}
+          onCopy={copy}
+          onBack={closeMail}
+        />
       )}
 
       {config && prefix && (
@@ -192,7 +228,7 @@ function TopBar() {
   return (
     <header className="topbar">
       <span className="brand">
-        <img src="/favicon.svg" width="26" height="26" alt="" />
+        <img src="/favicon.svg" width="24" height="24" alt="" />
         <span className="brand-name">{BRAND}</span>
       </span>
       <span className="brand-sub">临时邮箱</span>
