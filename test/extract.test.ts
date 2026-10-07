@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extract, findCode, htmlToText } from '../src/worker/extract';
+import { decodeEntities, extract, findCode, findLink, htmlToText } from '../src/worker/extract';
 
 describe('验证码提取', () => {
   const cases: { name: string; subject: string; text?: string; html?: string; code: string | null }[] = [
@@ -78,6 +78,25 @@ describe('验证码提取', () => {
       text: 'We now support Unicode 15 and barcode scanning in version 4.2.1.',
       code: null,
     },
+    {
+      name: '纯文本只是占位，验证码在 HTML 里',
+      subject: 'Your sign-in request',
+      text: 'View this email in your browser: https://mail.example.test/view/abc',
+      html: '<table><tr><td>Your verification code</td></tr><tr><td><strong>662190</strong></td></tr></table>',
+      code: '662190',
+    },
+    {
+      name: '关键词在样板文字里出现很多次，真正的验证码在后面',
+      subject: 'Security alert',
+      text: 'Never share a code with anyone. '.repeat(30) + '\nVerification code: 551122',
+      code: '551122',
+    },
+    {
+      name: '零宽字符和数字实体',
+      subject: 'Login',
+      html: '<p>&#8203;&zwnj;&nbsp;Your code&#58;&#x20;<b>&#55;&#x37;4120</b></p>',
+      code: '774120',
+    },
   ];
 
   for (const c of cases) {
@@ -109,6 +128,15 @@ describe('验证链接提取', () => {
     expect(r.link).toBe('https://app.test/activate/QWE123');
   });
 
+  it('跳过退订链接，查询参数里的关键词低于路径里的', () => {
+    expect(
+      findLink(
+        'https://news.test/unsubscribe?confirm=1 https://t.test/c?redirect=confirm https://app.test/email/verify/abc',
+      ),
+    ).toBe('https://app.test/email/verify/abc');
+    expect(findLink('https://t.test/c?step=confirm')).toBe('https://t.test/c?step=confirm');
+  });
+
   it('没有相关链接时为空', () => {
     expect(extract('Hi', 'See https://example.com/blog for news', undefined).link).toBeNull();
   });
@@ -118,7 +146,46 @@ describe('验证链接提取', () => {
   });
 });
 
+describe('htmlToText', () => {
+  it('跳过 style/script/head，块级标签换行', () => {
+    const t = htmlToText('<head><title>T</title></head><style>p{}</style><p>a</p><script>x()</script><div>b<br>c</div>');
+    expect(t).not.toMatch(/p\{|x\(|T/);
+    expect(t).toContain('a\n');
+    expect(t).toContain('b\nc');
+  });
+
+  it('未闭合的 style 只跳过开标签', () => {
+    expect(htmlToText('<style>code 123456')).toContain('code 123456');
+  });
+
+  it('href 中的实体只解码一次', () => {
+    expect(htmlToText('<a href="https://x.test/?a=1&amp;amp;b=2">x</a>')).toContain('https://x.test/?a=1&amp;b=2');
+  });
+
+  it('不成对的尖括号按文本保留', () => {
+    expect(htmlToText('a < b and 5 > 3')).toContain('a < b and 5 > 3');
+    expect(htmlToText('x <<<')).toBe('x <<<');
+  });
+
+  it('decodeEntities', () => {
+    expect(decodeEntities('&lt;&#65;&#x42;&unknown;&#xD800;')).toBe('<AB&unknown;&#xD800;');
+  });
+});
+
 describe('性能', () => {
+  // 旧实现中这些输入会触发二次方回溯：64KB 的 '<' 约 2.5 秒
+  it.each([
+    ['64KB 的 <', '<'.repeat(64 * 1024)],
+    ['大量无 > 的 <a', '<a '.repeat(21_000)],
+    ['大量未闭合 <style>', '<style>'.repeat(9_000)],
+    ['大量未闭合注释', '<!--'.repeat(16_000)],
+    ['大量 </ 和属性', '<a href="'.repeat(7_000)],
+  ])('对抗性输入：%s 远低于 10ms', (_, html) => {
+    const start = performance.now();
+    extract('subject', undefined, html);
+    expect(performance.now() - start).toBeLessThan(10);
+  });
+
   it('5KB 输入的提取远低于 10ms', () => {
     const big = ('lorem ipsum code dolor 12ab sit amet verification '.repeat(200) + '验证码 123456').repeat(5);
     const html = `<div>${big}</div>`.repeat(20);
