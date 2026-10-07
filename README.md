@@ -154,9 +154,11 @@ npm run deploy
 | `MAX_RAW_BYTES` | `1048576` | 原始邮件超过此大小直接拒收（含附件） |
 | `MAX_BODY_BYTES` | `204800` | 存储的正文上限（text 优先，html 用剩余额度），超出截断 |
 | `POLL_SECONDS` | `10` | 前端轮询间隔，最小 10 |
-| `BLOCKED_SENDERS` | 空 | 拒收的发件人或域名，逗号分隔，如 `spam@x.com,bad.org` |
-| `EXTRA_RESERVED` | 空 | 额外保留前缀，逗号分隔 |
-| `FORWARD_TO` | 空 | 发往保留前缀（postmaster、abuse…）的邮件转发到此地址；需先在 Email Routing → Destination addresses 验证。留空则拒收 |
+| `BLOCKED_SENDERS` | `none` | 拒收的发件人或域名，逗号分隔，如 `spam@x.com,bad.org` |
+| `EXTRA_RESERVED` | `none` | 额外保留前缀，逗号分隔 |
+| `FORWARD_TO` | 空 | 发往保留前缀（postmaster、abuse…）的邮件转发到此地址；需先在 Email Routing → Destination addresses 验证。`none` 则拒收 |
+
+> 一键部署页要求每个变量都非空，所以可选变量用 `none` 表示“不启用”。
 
 其他：
 

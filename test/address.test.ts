@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPrefix, normalizeAddress } from '../src/shared/address';
+import { checkPrefix, isUnset, normalizeAddress, parseList } from '../src/shared/address';
 
 describe('前缀校验', () => {
   it.each(['abc', 'john.doe', 'a_b-c', 'x'.repeat(32), 'k3j9x2ab'])('合法: %s', (p) => {
@@ -31,5 +31,17 @@ describe('完整地址', () => {
     expect(normalizeAddress('hello@other.com', 'example.com')).toBeNull();
     expect(normalizeAddress('admin@example.com', 'example.com')).toBeNull();
     expect(normalizeAddress('@example.com', 'example.com')).toBeNull();
+  });
+});
+
+describe('可选变量', () => {
+  it('none 和空值都表示未设置', () => {
+    expect(parseList('none')).toEqual([]);
+    expect(parseList(' NONE ')).toEqual([]);
+    expect(parseList('')).toEqual([]);
+    expect(parseList(undefined)).toEqual([]);
+    expect(parseList('Spam@x.com, bad.org')).toEqual(['spam@x.com', 'bad.org']);
+    expect(isUnset('none')).toBe(true);
+    expect(isUnset('me@example.org')).toBe(false);
   });
 });

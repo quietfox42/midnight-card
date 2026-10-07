@@ -45,7 +45,14 @@ export function normalizeAddress(
   return checkPrefix(lower.slice(0, at), extraReserved) === null ? lower : null;
 }
 
+/** 可选变量的“未设置”值。一键部署页要求每个变量非空，所以默认填 none。 */
+export const UNSET = 'none';
+
+export function isUnset(value: string | undefined): boolean {
+  return !value || value.trim().toLowerCase() === UNSET;
+}
+
 export function parseList(value: string | undefined): string[] {
-  if (!value) return [];
-  return value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (isUnset(value)) return [];
+  return value!.split(',').map((s) => s.trim().toLowerCase()).filter((s) => s && s !== UNSET);
 }

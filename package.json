@@ -36,13 +36,13 @@
         "description": "前端轮询间隔秒数，最小 10。"
       },
       "BLOCKED_SENDERS": {
-        "description": "拒收的发件人或域名，逗号分隔，例如 spam@bad.com,bad.org。"
+        "description": "拒收的发件人或域名，逗号分隔，例如 `spam@bad.com,bad.org`。不需要时填 `none`。"
       },
       "EXTRA_RESERVED": {
-        "description": "额外的保留前缀，逗号分隔。"
+        "description": "额外的保留前缀，逗号分隔，例如 `boss,hr`。不需要时填 `none`。"
       },
       "FORWARD_TO": {
-        "description": "可选：发往保留前缀（postmaster、abuse 等）的邮件转发到此已验证邮箱；留空则拒收。"
+        "description": "发往保留前缀（postmaster、abuse 等）的邮件转发到这个已在 Email Routing 验证过的邮箱。填 `none` 则直接拒收。"
       }
     }
   },

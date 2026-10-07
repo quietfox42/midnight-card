@@ -25,9 +25,9 @@ RETENTION_HOURS = "24"       # 邮件保留小时数
 MAX_RAW_BYTES = "1048576"    # 原始邮件超过此大小直接拒收（1MB）
 MAX_BODY_BYTES = "204800"    # 存储的正文上限，超出截断（200KB）
 POLL_SECONDS = "10"          # 前端轮询间隔（秒，最小 10）
-BLOCKED_SENDERS = ""         # 拒收发件人/域名，逗号分隔
-EXTRA_RESERVED = ""          # 额外保留前缀，逗号分隔
-FORWARD_TO = ""              # 可选：保留前缀邮件转发到此已验证地址，留空则拒收
+BLOCKED_SENDERS = "none"     # 拒收发件人/域名，逗号分隔；none 表示不启用
+EXTRA_RESERVED = "none"      # 额外保留前缀，逗号分隔；none 表示不启用
+FORWARD_TO = "none"          # 保留前缀邮件转发到此已验证地址；none 表示直接拒收
 
 # API 速率限制：每个 IP 每 60 秒最多 60 次（轮询 10s 一次只用 6 次）。
 # namespace_id 是你自己挑的整数，不是账号 ID。

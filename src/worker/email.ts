@@ -1,5 +1,5 @@
 import PostalMime from 'postal-mime';
-import { checkPrefix, parseList, RESERVED_PREFIXES } from '../shared/address';
+import { checkPrefix, isUnset, parseList, RESERVED_PREFIXES } from '../shared/address';
 import { num, type Env } from './env';
 import { extract } from './extract';
 
@@ -28,8 +28,8 @@ export async function handleEmail(message: ForwardableEmailMessage, env: Env): P
   }
   const extraReserved = parseList(env.EXTRA_RESERVED);
   const prefixError = checkPrefix(prefix, extraReserved);
-  if (prefixError === 'reserved' && env.FORWARD_TO) {
-    await message.forward(env.FORWARD_TO);
+  if (prefixError === 'reserved' && !isUnset(env.FORWARD_TO)) {
+    await message.forward(env.FORWARD_TO.trim());
     return;
   }
   if (prefixError) {
