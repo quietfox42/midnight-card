@@ -13,7 +13,8 @@
     "setup": "node scripts/setup.mjs",
     "db:init": "wrangler d1 execute DB --remote --file=schema.sql -y",
     "deploy": "npm run build && npm run db:init && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "size": "node scripts/size.mjs"
   },
   "cloudflare": {
     "bindings": {
