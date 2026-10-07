@@ -9,10 +9,10 @@
                          │
                          ▼
                ┌─────────────────────┐    Cron 每小时
-               │  一个 Worker        │◀── DELETE 过期邮件
+               │  一个 Worker        │◀── 分批 DELETE 过期邮件
                │  email() / fetch()  │
                └──────────┬──────────┘
-                          │ 每封邮件 1 次 INSERT
+                          │ 每封邮件 1 次 INSERT OR IGNORE（按 Message-ID 去重）
                           ▼
                        D1 (SQLite)
 浏览器 ──▶ Workers Static Assets（CDN，不计请求数）
@@ -20,7 +20,7 @@
 ```
 
 - **后端**：一个 Worker 同时处理 Email、API 和 Cron；`postal-mime` 解析；D1 存储（不用 KV）。
-- **前端**：Vite + React + TypeScript，手写 CSS，不依赖 UI 组件库、外链字体或图片（gzip 后约 80KB）；构建产物由 Workers Static Assets 托管，只有 `/api/*` 进 Worker。手机单栏、宽屏双栏，只有深色主题。
+- **前端**：Vite + Preact + TypeScript，手写 CSS，不依赖 UI 组件库、外链字体或图片（首屏 JS gzip 后约 20KB，详情和自定义抽屉按需加载）；构建产物由 Workers Static Assets 托管，只有 `/api/*` 进 Worker。手机单栏、宽屏双栏，只有深色主题。
 - **安全**：邮件 HTML 放在 `<iframe sandbox srcdoc>` 中渲染，禁止脚本，CSP 禁止加载任何外部资源（追踪像素、远程图片、字体都不会自动加载）。
 
 > ⚠️ **地址是公开的**：任何知道地址的人都能看到这个地址收到的邮件。不要用于重要账号。
@@ -84,13 +84,13 @@ npm run deploy
 
 **`npm run deploy`**：`vite build` → `wrangler d1 migrations apply`（只执行新迁移，几乎不消耗额度）→ `wrangler deploy`。
 
-> 仓库中的 `database_id` 是全 0 占位符（一键部署要求配置里有默认 ID，部署时会替换）。命令行部署前必须先运行一次 `npm run setup` 写入真实 ID，否则 deploy 会因找不到数据库而失败。
+> 仓库中的 `database_id` 和 `DOMAIN` 是原作者部署用的值。fork 后命令行部署前必须先运行一次 `npm run setup`，写入你自己的数据库 ID 和域名，否则 deploy 会因找不到数据库而失败。
 
 > `database_id` 不是机密，建议把 setup 修改后的 `wrangler.toml` 提交到你自己的仓库，这样 CI 部署也能找到同一个数据库。
 
 ### 方式 C：GitHub Actions 自动部署
 
-仓库自带 [.github/workflows/deploy.yml](.github/workflows/deploy.yml)：push 到 `main` 时运行测试并执行 `npm run deploy`。
+仓库自带 [.github/workflows/deploy.yml](.github/workflows/deploy.yml)：每个 PR 和 push 都会运行类型检查、测试和构建体积报告；push 到 `main` 且检查通过后执行 `npm run deploy`（构建 → 应用迁移 → 部署）。
 
 1. 先在本地运行一次 `npm run setup`，把写好 `database_id` 和 `DOMAIN` 的 `wrangler.toml` 提交。
 2. 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 添加：
@@ -105,7 +105,7 @@ npm run deploy
 
      Account Resources 选择你的账号；Zone Resources（如需要）选择对应域名。
 
-未配置 secrets 时工作流只跑测试，不部署。
+未配置 secrets 时工作流只跑检查，不部署。
 
 ### 手动步骤（必须在 Cloudflare 面板完成）
 
@@ -152,7 +152,7 @@ npm run deploy
 | `DOMAIN` | `example.com` | 收信域名（占位符，必须修改） |
 | `RETENTION_HOURS` | `24` | 邮件保留小时数，Cron 每小时清理 |
 | `MAX_RAW_BYTES` | `1048576` | 原始邮件超过此大小直接拒收（含附件） |
-| `MAX_BODY_BYTES` | `204800` | 存储的正文上限（text 优先，html 用剩余额度），超出截断 |
+| `MAX_BODY_BYTES` | `204800` | 存储的正文上限，按 UTF-8 字节计（text 优先，html 用剩余额度），超出截断且不会切断字符 |
 | `POLL_SECONDS` | `10` | 前端轮询间隔，最小 10 |
 | `BLOCKED_SENDERS` | `none` | 拒收的发件人或域名，逗号分隔，如 `spam@x.com,bad.org` |
 | `EXTRA_RESERVED` | `none` | 额外保留前缀，逗号分隔 |
@@ -163,7 +163,7 @@ npm run deploy
 其他：
 
 - **速率限制**：`[[ratelimits]]` 中 `limit = 60, period = 60`，即每个 IP 每分钟 60 次数据请求（正常轮询只用 6 次）。`namespace_id` 是自选整数，不是账号 ID。
-- **Cron**：`[triggers] crons = ["0 * * * *"]`。
+- **Cron**：`[triggers] crons = ["0 * * * *"]`。每次分批删除（每批 5000 行，最多 20 批），积压时由后续几次 Cron 消化；在清理之前已过期的邮件 API 也不再返回。
 - **D1 名称**：`database_name = "midnight-card"`。
 
 ---
@@ -187,9 +187,10 @@ npm run deploy
 
 在 Email Worker 收信时提取**一次**，存入 D1 的 `code`、`link` 列，前端直接展示，不重复计算。代码见 [src/worker/extract.ts](src/worker/extract.ts)。
 
-- 只扫描主题 + 正文前 **5KB**（纯 HTML 邮件先做廉价去标签，保留 `<a href>` 中的 URL）。
+- 只扫描主题 + 正文前 **5KB**。HTML 用单遍线性扫描器转成文本（跳过 style/script/head，保留 `<a href>` 中的 URL，解码命名和数字实体、去掉零宽填充字符）；任何输入的最坏情况都是线性的，不存在正则回溯。
+- 纯文本部分找不到验证码时（很多邮件的 text 只有“请在浏览器中查看”），再扫一遍 HTML 部分。
 - **验证码**：查找“验证码 / 校验码 / 动态码 / 一次性密码 / code / verification / OTP / passcode / PIN …”关键词，在其后 80 字符、其前 40 字符的窗口中找 4-8 位数字或字母数字（必须含数字），也支持 `123 456` 分组格式。纯数字优先、距离关键词越近越优先；排除年份、价格、颜色值、URL 里的数字。匹配不到留空。
-- **链接**：第一个包含 `verify` / `confirm` / `activate` 的 URL。前端显示 **打开链接** 按钮（新标签页，`rel="noopener noreferrer"`），**只展示，绝不自动访问**。
+- **链接**：包含 `verify` / `confirm` / `activate` / `validate` / `magic` 的 URL；关键词在域名或路径里的优先于只在查询参数里的，退订、隐私、帮助类链接跳过。前端显示 **打开链接** 按钮（新标签页，`rel="noopener noreferrer"`），**只展示，绝不自动访问**。
 - 列表中每封邮件的验证码以大号等宽字显示，点击即复制，提示“已复制”并轻微震动（支持 `navigator.vibrate` 的设备）。
 - 测试用例覆盖 Google（`G-123456`）、GitHub、微信、Microsoft、Apple、Discord、纯 HTML、营销邮件等：`npm test`。
 
@@ -217,9 +218,10 @@ Cloudflare 免费套餐（每天重置）：
 | 清理一封过期邮件 | —（Cron 每天 24 次，共享） | ≈1 | ≈3 |
 | 打开网页 | 0（静态资源走 CDN） | 0 | 0 |
 | `/api/config` | 1（浏览器缓存 1 小时） | 0 | 0 |
-| 一次轮询（无新邮件） | 1 | ≈0（覆盖索引查找，返回 0 行） | 0 |
+| 一次轮询（无新邮件） | 1 | ≈0（索引查找，返回 0 行） | 0 |
+| 一次轮询（两次之间到了 >50 封） | 每 50 封 1 次（按 `more` 立即续拉） | ≤51/次 | 0 |
 | 首次拉列表 | 1 | ≤50 | 0 |
-| 打开一封邮件 | 1（同一封浏览器缓存 24h） | 1 | 0 |
+| 打开一封邮件 | 1（同一封浏览器缓存到它过期为止） | 1 | 0 |
 
 ### 能支撑多少
 
@@ -227,7 +229,8 @@ Cloudflare 免费套餐（每天重置）：
 
 **访客量（受 Workers 请求限制）**：
 - 一个停留 5 分钟、页面一直可见的访客 ≈ 1 config + 30 次轮询 + 2 次查看 ≈ **33 次请求**。
-- 一个挂着 1 小时的标签页：前 5 分钟每 10 秒、之后无新邮件退避到每 30 秒 ≈ **140 次/小时**；切到后台则 **0 次**。
+- 一个挂着 1 小时的标签页：前 5 分钟每 10 秒、之后无新邮件退避到每 30 秒 ≈ **140 次/小时**；切到后台或浏览器离线则 **0 次**。
+- 请求失败（断网、Worker 出错）时指数退避 20s → 40s → 80s → 最长 120s（±20% 抖动）：断网 10 分钟内约 7 次请求（旧版 21 次）。
 - 扣除邮件和 Cron 后：
 
 | 每日邮件数 | 剩余请求 | 约可支撑（5 分钟访问） |
@@ -244,7 +247,7 @@ Cloudflare 免费套餐（每天重置）：
 
 1. **Workers 请求数（轮询）是第一瓶颈**。缓解措施已内置：页面不可见时暂停、5 分钟无新邮件退避到 30 秒、`/api/config` 和邮件详情走浏览器缓存、静态资源完全不进 Worker。访客更多时可调大 `POLL_SECONDS`（例如 20 秒约翻倍容量）。
 2. **D1 写入是第二瓶颈**，只在每天上万封邮件时出现。每封邮件的写入量是固定的，缩短保留时间不会减少写入；可用 `BLOCKED_SENDERS` 挡掉垃圾邮件源。
-3. **CPU 10ms**：正则只扫 5KB（实测 < 1ms）；`postal-mime` 解析是主要开销，所以超过 `MAX_RAW_BYTES`（1MB）的邮件直接拒收。若日志中出现 CPU 超限，可把 `MAX_RAW_BYTES` 降到 `524288`。
+3. **CPU 10ms**：提取只扫 5KB，HTML 转文本是线性的（64KB 对抗性输入 < 2ms）；`postal-mime` 解析是主要开销，所以超过 `MAX_RAW_BYTES`（1MB）的邮件直接拒收。若日志中出现 CPU 超限，可把 `MAX_RAW_BYTES` 降到 `524288`。
 
 超出额度时，Cloudflare 免费套餐会让请求失败（不会产生费用）：网页仍可打开，API 返回错误，邮件会被退回。
 
@@ -252,6 +255,7 @@ Cloudflare 免费套餐（每天重置）：
 
 - 超过 `MAX_RAW_BYTES` 的邮件、`BLOCKED_SENDERS` 中的发件人、非本域名/格式非法/保留前缀的收件人：在 SMTP 阶段直接 reject，不解析、不写库。
 - 附件一律丢弃；正文超过 `MAX_BODY_BYTES` 截断。
+- 同一个 `Message-ID` 只存一次（对方 MTA 重试、重复投递不会产生重复行），所以写库失败时直接报错让对方重试是安全的。邮件解析失败不会退信，退回保存信头主题和原文开头。
 - API 只读，按 IP 限流，所有请求都校验地址格式；读取单封邮件必须同时提供 id 和地址，无法通过遍历 id 读取他人邮件。
 
 ---
@@ -260,8 +264,9 @@ Cloudflare 免费套餐（每天重置）：
 
 ```bash
 npm install
-npm test                                              # 正则与地址校验测试
-npm run build                                         # 构建前端到 dist/
+npm test                  # 全部测试（worker 用 node:sqlite 跑真实迁移 SQL；前端用 jsdom）
+npm run typecheck
+npm run build && npm run size   # 构建并列出 dist/ 各文件原始与 gzip 体积
 npm run db:migrate:local  # 本地建表 / 升级
 npx wrangler dev --var DOMAIN:test.dev                # http://localhost:8787
 ```
@@ -280,6 +285,10 @@ curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"
 
 `test.eml` 至少需要 `From`、`To`、`Subject`、`Message-ID` 头。
 
+> 本地清空过 D1 后 id 会从 1 重新开始，浏览器里之前缓存的 `/api/messages/<id>` 详情可能对不上（生产环境 id 不会复用）。遇到时清一下浏览器缓存即可。
+
+测试需要 Node.js 22.13+（用到内置的 `node:sqlite`）。
+
 ### 项目结构
 
 ```
@@ -287,14 +296,44 @@ wrangler.toml            Worker、D1、静态资源、限流、Cron、变量
 migrations/              emails 表、索引与后续变更（wrangler d1 migrations）
 scripts/setup.mjs        幂等初始化脚本
 src/shared/address.ts    前后端共用的地址校验
-src/worker/index.ts      入口：fetch / email / scheduled
+src/worker/index.ts      入口：fetch / email / scheduled（只能有 default 导出）
+src/worker/env.ts        变量解析（每个 isolate 解析一次）
 src/worker/email.ts      收信处理
 src/worker/api.ts        只读 API
+src/worker/cleanup.ts    分批清理过期邮件
 src/worker/extract.ts    验证码与链接提取
-src/web/                 React 前端
-public/_headers          /assets/* 一年 immutable 缓存
-test/                    vitest 测试
+src/web/                 Preact 前端
+src/web/lib/pollPolicy.ts  轮询节奏（纯函数）
+src/web/lib/store.ts     小型外部状态、共享媒体查询与时钟
+public/_headers          安全头；/assets/* 一年 immutable 缓存
+test/                    worker 测试（test/helpers：node:sqlite 实现的 D1）
+test/web/                前端测试（jsdom：渲染次数、轮询、倾斜、随机前缀）
 ```
+
+## 性能与设计说明
+
+最近一次全面优化的前后对比（数据来自 `npm run size` 和 `test/` 中的测量用例）：
+
+| 项目 | 优化前 | 优化后 |
+|---|---|---|
+| 首屏 JS（gzip） | 83.7 KB（React） | 19.6 KB（Preact；另有 4.2 KB 空闲时预取） |
+| 64KB 对抗性 HTML 的提取耗时（最坏一例） | 317 秒 | < 2 ms |
+| 两次轮询之间到了 120 封 | 只拿到最新 50 封 | 120 封全部拿到（3 次查询） |
+| 一次空轮询触发的组件渲染（20 封邮件） | 78 | 3 |
+| 复制一个验证码触发的组件渲染 | 78 | 6 |
+| 卡片滑出屏幕触发的组件渲染 | 78 | 2 |
+| matchMedia 监听器 | 24（每个验证码一个） | 2 |
+| 断网 10 分钟的请求数 | 21 | 7 |
+| 卡片倾斜回正时间 30Hz / 60Hz / 144Hz | 1433 / 717 / 299 ms | 700 / 700 / 688 ms |
+| 指针移动时读取卡片尺寸 | 每次 | 只读一次（缓存） |
+| 每个数据请求的 D1 查询 | 1 | 1（测试中断言） |
+
+设计取舍：
+
+- **`AUTOINCREMENT` 保留**：去掉后表被清空时 id 会从 1 重新开始，前端的 `since` 游标会漏信。
+- **纹理保留 SVG `feTurbulence`**：实测预渲染成位图要多下载约 48KB（WebP），而 SVG 栅格化耗时与解码一张空白 SVG 无法区分。
+- **`memo` 自己实现**：引入 `preact/compat` 会顺带注册全局钩子（如 onChange 改写），改变整个应用的行为。
+- **地址即凭证**：任何知道地址的人都能读取该地址的邮件，这是临时邮箱的通行做法；可猜的自定义前缀（如 `john`）尤其如此。
 
 ## License
 
