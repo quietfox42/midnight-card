@@ -159,57 +159,6 @@ p {
   padding-top: 12px;
 }
 
-/* ---------- 公开提示（可展开） ---------- */
-
-.notice {
-  max-width: 440px;
-  margin: 4px auto 0;
-  font-size: 12.5px;
-  color: var(--text-2);
-}
-
-.notice summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: var(--tap);
-  list-style: none;
-  cursor: pointer;
-  letter-spacing: 0.08em;
-  border-radius: var(--r-sm);
-}
-
-.notice summary::-webkit-details-marker {
-  display: none;
-}
-
-.notice summary svg {
-  color: var(--text-3);
-  transition: transform var(--dur) var(--ease-out);
-}
-
-.notice[open] summary svg {
-  transform: rotate(180deg);
-}
-
-.notice-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 8px var(--glow-gold);
-}
-
-.notice p {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  line-height: 1.65;
-  animation: rise-in var(--dur-slow) var(--ease-out);
-}
-
 /* ---------- 按钮 ---------- */
 
 .btn {
@@ -580,14 +529,12 @@ p {
   }
 
   .toast,
-  .notice p,
   .fatal {
     animation: fade-in 150ms linear both;
   }
 
   .btn,
-  .code-chip,
-  .notice summary svg {
+  .code-chip {
     transition: none;
   }
 

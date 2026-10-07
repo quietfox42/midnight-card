@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { checkPrefix } from '../shared/address';
 import { ActionDock } from './components/ActionDock';
 import { MidnightCard, type CardFx } from './components/card/MidnightCard';
-import { ChevronIcon } from './components/Icons';
 import { Inbox } from './components/Inbox';
 import { MailDetail } from './components/MailDetail';
 import { PrefixSheet } from './components/PrefixSheet';
@@ -156,14 +155,6 @@ export function App() {
                 onRenew={() => changePrefix(randomPrefix())}
                 onCustomize={() => setSheetOpen(true)}
               />
-              <details className="notice">
-                <summary>
-                  <span className="notice-dot" aria-hidden="true" />
-                  {T.noticeSummary(hours)}
-                  <ChevronIcon />
-                </summary>
-                <p>{T.publicNotice(hours)}</p>
-              </details>
             </section>
 
             <Inbox

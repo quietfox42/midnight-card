@@ -78,9 +78,3 @@ export const NfcIcon = () => (
     <path d="M15 3.5a12 12 0 0 1 0 17" />
   </svg>
 );
-
-export const ChevronIcon = () => (
-  <svg {...base} width={16} height={16}>
-    <path d="m6 9 6 6 6-6" />
-  </svg>
-);
