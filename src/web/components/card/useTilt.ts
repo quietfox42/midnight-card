@@ -56,6 +56,7 @@ export function useTilt(targets: TiltTargets, enabled: boolean, onVisible?: (vis
     if (!st) return;
     const io = new IntersectionObserver(
       ([entry]) => {
+        if (!entry) return;
         // 只剩一小条时地址已经看不清，算作离屏
         const visible = entry.isIntersecting && entry.intersectionRatio >= VISIBLE_RATIO;
         st.classList.toggle('is-offscreen', !visible);

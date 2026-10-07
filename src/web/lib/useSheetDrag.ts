@@ -49,7 +49,8 @@ export function useSheetDrag({ panel, scrim, handle, scroller, enabled, onDismis
 
     const onStart = (e: TouchEvent) => {
       decided = dragging = false;
-      if (e.touches.length !== 1) {
+      const t = e.touches[0];
+      if (!t || e.touches.length !== 1) {
         eligible = false;
         return;
       }
@@ -57,7 +58,6 @@ export function useSheetDrag({ panel, scrim, handle, scroller, enabled, onDismis
       const sc = scroller?.current;
       const fromHandle = !!handle?.current?.contains(target);
       eligible = fromHandle || !sc || sc.scrollTop <= 0;
-      const t = e.touches[0];
       startX = t.clientX;
       startY = lastY = t.clientY;
       lastT = e.timeStamp;
@@ -65,8 +65,8 @@ export function useSheetDrag({ panel, scrim, handle, scroller, enabled, onDismis
     };
 
     const onMove = (e: TouchEvent) => {
-      if (!eligible) return;
       const t = e.touches[0];
+      if (!eligible || !t) return;
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
       if (!decided) {

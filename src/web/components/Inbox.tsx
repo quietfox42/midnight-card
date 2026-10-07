@@ -76,8 +76,8 @@ export const Inbox = memo(function Inbox(props: Props) {
       for (const el of els) play(el, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
       return;
     }
-    const first = els[0];
-    const last = els[els.length - 1];
+    const first = els[0]!; // els 非空（上面已判断）
+    const last = els[els.length - 1]!;
     const shift = last.offsetTop + last.offsetHeight - first.offsetTop;
     play(ul, [{ transform: `translate3d(0, ${-shift}px, 0)` }, { transform: 'none' }], { duration: 720, easing: EASE.spring });
     els.forEach((el, i) => {

@@ -63,18 +63,19 @@ export function usePullToRefresh({ target, indicator, onRefresh, enabled }: Opti
     const onStart = (e: TouchEvent) => {
       decided = true; // 先当作“不归我管”，满足条件再改回来
       pulling = false;
-      if (busy || e.touches.length !== 1 || window.scrollY > 0) return;
+      const t = e.touches[0];
+      if (busy || !t || e.touches.length !== 1 || window.scrollY > 0) return;
       // 弹层、对话框里的手势不管
       if ((e.target as Element).closest('dialog, .detail, .dock')) return;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      startX = t.clientX;
+      startY = t.clientY;
       decided = pulling = armed = false;
       dist = 0;
     };
 
     const onMove = (e: TouchEvent) => {
-      if (busy || e.touches.length !== 1) return;
       const t = e.touches[0];
+      if (busy || !t || e.touches.length !== 1) return;
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       if (!decided) {

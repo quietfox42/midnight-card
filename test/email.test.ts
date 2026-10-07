@@ -51,7 +51,7 @@ describe('收信', () => {
     await handleEmail(msg, env, NOW);
     expect(sent.rejected).toBeNull();
     expect(d1.queries).toHaveLength(1);
-    const [row] = await rows(env);
+    const row = (await rows(env))[0]!;
     expect(row).toMatchObject({
       address: `abc@${DOMAIN}`,
       sender: 'Example <noreply@example.org>',
@@ -78,7 +78,7 @@ describe('收信', () => {
   it('正文按 UTF-8 字节截断', async () => {
     const { env } = createEnv({ MAX_BODY_BYTES: '2048' });
     await handleEmail(message(eml('验证码'.repeat(2000))).msg, env, NOW);
-    const [row] = await rows(env);
+    const row = (await rows(env))[0]!;
     expect(byteLength(row.text)).toBeLessThanOrEqual(2048);
     expect(byteLength(row.text)).toBeGreaterThan(2040);
     expect(row.text).not.toContain('�');
@@ -91,7 +91,7 @@ describe('收信', () => {
     const { msg, sent } = message(eml('Your code is 551203'));
     await handleEmail(msg, env, NOW);
     expect(sent.rejected).toBeNull();
-    const [row] = await rows(env);
+    const row = (await rows(env))[0]!;
     expect(row.subject).toBe('Your verification code');
     expect(row.text).toBe('Your code is 551203');
     expect(row.code).toBe('551203');

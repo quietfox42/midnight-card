@@ -11,6 +11,11 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["src/worker", "src/shared", "test/*.ts", "test/helpers"]

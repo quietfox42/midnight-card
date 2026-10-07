@@ -13,6 +13,11 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
     "types": ["vite/client"]
   },
   "include": ["src/web", "src/shared", "test/web"]

@@ -1,6 +1,6 @@
 # 午夜黑卡（midnight-card）— 所有可调参数都在本文件，无需改代码。
-# 不要在此填写账号 ID。database_id 是占位符：一键部署会自动创建 D1 并替换它，
-# 命令行部署时由 `npm run setup` 创建/查找 D1 并写入真实 ID。
+# 不要在此填写账号 ID。database_id 由 `npm run setup` 创建/查找 D1 后写入（一键部署会自动创建并替换）；
+# fork 本仓库时它指向的是原作者的数据库，请重新运行 setup。DOMAIN 同理需要改成你自己的域名。
 name = "midnight-card"
 main = "src/worker/index.ts"
 compatibility_date = "2026-10-01"
@@ -37,7 +37,7 @@ name = "API_LIMITER"
 namespace_id = "4201"
 simple = { limit = 60, period = 60 }
 
-# 每小时清理一次过期邮件（单条 DELETE）。
+# 每小时清理一次过期邮件（分批 DELETE，每批 5000 行，每次最多 20 批）。
 [triggers]
 crons = ["0 * * * *"]
 

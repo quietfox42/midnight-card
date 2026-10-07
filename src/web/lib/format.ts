@@ -13,5 +13,5 @@ export const fullTime = (ms: number) => fullFmt.format(ms);
 /** "Name <a@b.c>" → "Name" */
 export function senderName(sender: string): string {
   const m = /^(.*?)\s*<[^>]+>$/.exec(sender);
-  return (m && m[1].replace(/^"|"$/g, '')) || sender;
+  return m?.[1]?.replace(/^"|"$/g, '') || sender;
 }
