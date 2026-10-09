@@ -251,6 +251,11 @@ export function App() {
             />
           )}
         </main>
+        <footer className="site-footer">
+          <a href="https://icp.gov.moe/?keyword=20260768" target="_blank" rel="noopener noreferrer">
+            萌ICP备20260768号
+          </a>
+        </footer>
       </div>
 
       {pill > 0 && !overlay && (

@@ -137,6 +137,23 @@ html[data-perf='full'] .page.is-receded {
   margin: 0 auto;
 }
 
+.site-footer {
+  margin-top: var(--s-8);
+  text-align: center;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+}
+
+.site-footer a {
+  color: var(--text-3);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--text-2);
+  text-decoration: underline;
+}
+
 /* 网格子项默认 min-width:auto，长主题（nowrap）会把列撑出视口 */
 .layout > *,
 .column-main > * {
